@@ -1,0 +1,5109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICE Bang!</title>
+<meta name="description" content="ICE Bang! - AI漫画创作平台，以AI赋能创意。提供AI剧本创作、素材管理、风格引擎、批量渲染等全流程漫画创作工具。">
+<meta name="keywords" content="AI漫画,AI创作,漫剧,镇妖博物馆,ICE Bang">
+<meta property="og:title" content="ICE Bang! - AI漫画创作平台">
+<meta property="og:description" content="AI驱动的全流程漫画创作平台，以AI赋能每一格故事。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://icebang01.github.io/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧊</text></svg>">
+<style>
+:root {
+  --bg-primary: #000;
+  --text-primary: rgba(255,255,255,0.85);
+  --text-secondary: rgba(255,255,255,0.8);
+  --text-tertiary: rgba(255,255,255,0.5);
+  --text-quaternary: rgba(255,255,255,0.25);
+  --accent-1: #c8b478;
+  --accent-2: #7ad8c0;
+  --accent-3: #d4a878;
+  --blur-base: 12px;
+  --blur-strong: 20px;
+  --transition-base: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:#000;
+  font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+#galaxy-canvas{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:0;pointer-events:none;
+}
+
+/* 标题粒子画布 */
+#title-particles-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+/* 首页标题 */
+.hero-screen{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:2;cursor:pointer;user-select:none;
+  transition: opacity 0.5s ease;
+}
+.hero-screen .ice-title{
+  font-family:'Noto Serif SC',serif;
+  font-size:clamp(48px,10vw,120px);
+  font-weight:900;
+  letter-spacing: clamp(8px, 2vw, 12px);
+  background:linear-gradient(90deg,var(--accent-1),#e8d48a,#ff6b6b,#a855f7,#3b82f6,#22d3ee,var(--accent-1));
+  background-size: 300% 100%;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:flow-color 8s linear infinite;
+  position:relative;z-index:3;
+}
+@keyframes flow-color{
+  0%{background-position:0% 50%}
+  100%{background-position:300% 50%}
+}
+.ice-sub{
+  font-size:clamp(10px,1.5vw,16px);
+  color:rgba(255,255,255,0.45);
+  letter-spacing:clamp(4px, 1vw, 8px);
+  font-weight:300;
+  margin-top: 12px;
+  z-index:3;
+  text-transform: uppercase;
+}
+.ice-tagline{
+  font-size:clamp(13px,1.8vw,20px);
+  color:rgba(200,180,120,0.6);
+  letter-spacing:clamp(6px, 1.5vw, 10px);
+  font-weight:200;
+  margin-top: 8px;
+  z-index:3;
+  font-style:italic;
+}
+.hero-screen .hint{
+  position:absolute;bottom:10%;
+  font-size:clamp(10px, 1.2vw, 12px);
+  color:rgba(255,255,255,0.4);
+  letter-spacing:4px;
+  font-weight:300;
+  animation:pulse 4s ease-in-out infinite;
+  z-index:3;
+  padding: 4px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+}
+@keyframes pulse{
+  0%,100%{opacity:0.4;transform:translateY(0)}
+  50%{opacity:0.7;transform:translateY(-6px)}
+}
+
+/* 顶部控制按钮 */
+.control-btn {
+  position:fixed;
+  top:20px;
+  width:40px;
+  height:40px;
+  border-radius:10px;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(var(--blur-base));
+  -webkit-backdrop-filter: blur(var(--blur-base));
+  -webkit-backdrop-filter: blur(var(--blur-base));
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  color: rgba(255,255,255,0.35);
+  font-size: 18px;
+  z-index: 100;
+}
+.control-btn:hover{
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.12);
+  color: var(--accent-1);
+  transform: translateY(-2px);
+}
+.back-btn{ left: 20px; display: none; }
+.back-btn.show{ display:flex; }
+.audio-control{ right: 20px; }
+
+/* 模块选择页 */
+.modules-wrap{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:1;opacity:0;pointer-events:none;
+  transform: scale(1);
+  transition:opacity 0.45s ease, transform 0.45s ease;
+  overflow-y: auto;
+  padding: 40px 0;
+}
+.modules-wrap.show{opacity:1;pointer-events:auto; transform: scale(1);}
+.modules-grid{
+  display:flex;gap:32px;
+  flex-wrap: wrap;
+  justify-content:center;
+  max-width:1100px;width:92%;
+  padding:20px;
+}
+.mod-card{
+  flex:1; min-width:260px; max-width:320px;
+  padding:48px 32px 40px;
+  border-radius:20px;
+  text-align:center;cursor:pointer;
+  position:relative;overflow:hidden;
+  background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  backdrop-filter: blur(var(--blur-strong)) saturate(1.8);
+  -webkit-backdrop-filter: blur(var(--blur-strong)) saturate(1.8);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12);
+  transition: all 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+.mod-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:0;transition:opacity 0.6s ease;
+}
+.mod-card:hover{
+  transform: translateY(-8px) scale(1.02);
+  border-color: var(--accent);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 100px rgba(200,180,120,0.08);
+}
+.mod-card:active{
+  transform: scale(0.97);
+  transition-duration: 0.15s;
+}
+.mod-card.clicked{
+  transform: scale(1.06);
+  border-color: var(--accent);
+  box-shadow: 0 0 40px rgba(200,180,120,0.15), 0 0 100px rgba(200,180,120,0.05);
+}
+.mod-card:hover::before{opacity:0.8}
+.mod-card .icon{
+  font-size:40px;
+  display:block;margin-bottom:16px;
+  color: rgba(255,255,255,0.35);
+  transition: color var(--transition-base);
+}
+.mod-card:hover .icon{ color: var(--accent); }
+.mod-card .name{
+  font-size:18px;
+  font-weight:500;color:var(--text-secondary);
+  letter-spacing:4px;
+  transition:color var(--transition-base);
+  margin-bottom: 6px;
+}
+.mod-card:hover .name{color:var(--accent)}
+.mod-card .desc{
+  font-size:12px;
+  color:var(--text-tertiary);
+  letter-spacing:2px;
+  margin-top:8px;font-weight:300;
+  line-height: 1.5;
+}
+.m1{--accent:var(--accent-1)}
+.m2{--accent:var(--accent-2)}
+.m3{--accent:var(--accent-3)}
+.modules-wrap .ft{
+  font-size:10px;
+  color:rgba(255,255,255,0.12);
+  letter-spacing:3px;
+  margin-top:32px;
+  font-weight:200;
+  padding-bottom: 20px;
+}
+
+/* Toast 提示 */
+.coming-soon-toast{
+  position:fixed;bottom:30px;left:50%;
+  transform:translateX(-50%) translateY(10px);
+  background: linear-gradient(145deg, rgba(200,180,120,0.08), rgba(200,180,120,0.03));
+  border:1px solid rgba(200,180,120,0.12);
+  backdrop-filter: blur(var(--blur-base));
+  -webkit-backdrop-filter: blur(var(--blur-base));
+  -webkit-backdrop-filter: blur(var(--blur-base));
+  padding:10px 20px;
+  border-radius:20px;
+  color:var(--accent-1);
+  font-size:12px;
+  z-index:999;
+  opacity:0;
+  transition: all 0.4s ease;
+}
+.coming-soon-toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+/* ========== 3D 作品集 ========== */
+.upload-tabs {
+  display: flex; gap: 4px; margin-bottom: 12px;
+}
+.upload-tab {
+  padding: 5px 14px; font-size: 11px; color: var(--text-tertiary);
+  cursor: pointer; border-radius: 6px; transition: all 0.2s;
+  letter-spacing: 1px; background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.upload-tab:hover { color: var(--accent-1); background: rgba(200,180,120,0.04); }
+.upload-tab.active { color: var(--accent-1); background: rgba(200,180,120,0.08); border-color: rgba(200,180,120,0.15); }
+
+.demo-badge {
+  display: inline-block; font-size: 9px; padding: 1px 8px;
+  border-radius: 8px; background: rgba(200,180,120,0.08);
+  color: var(--accent-1); border: 1px solid rgba(200,180,120,0.12);
+  margin-left: 8px; letter-spacing: 1px; font-weight: 400;
+  vertical-align: middle;
+}
+
+.model-grid, .texture-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px; margin: 12px 0;
+}
+.model-card {
+  background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(200,180,120,0.01));
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+  overflow: hidden; transition: all 0.3s; cursor: pointer;
+}
+.model-card:hover {
+  border-color: rgba(200,180,120,0.15); transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.model-card .model-thumb {
+  width: 100%; aspect-ratio: 1/1;
+  background: linear-gradient(135deg, #0a0818, #120e20);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; color: rgba(200,180,120,0.15);
+  position: relative;
+}
+.model-card .model-thumb canvas { width: 100%; height: 100%; display: block; }
+.model-card .model-info { padding: 10px 12px; }
+.model-card .model-name { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-card .model-meta { font-size: 10px; color: var(--text-quaternary); margin-top: 4px; display: flex; gap: 10px; }
+.model-card .model-actions { display: flex; gap: 4px; margin-top: 8px; }
+.model-card .model-actions button {
+  flex: 1; padding: 4px 8px; font-size: 10px;
+  border-radius: 4px; cursor: pointer; transition: all 0.2s;
+  background: rgba(200,180,120,0.04); border: 1px solid rgba(200,180,120,0.08);
+  color: var(--text-tertiary);
+}
+.model-card .model-actions button:hover { background: rgba(200,180,120,0.1); color: var(--accent-1); }
+
+.texture-card {
+  aspect-ratio: 1/1; border-radius: 8px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.05); cursor: pointer;
+  transition: all 0.3s; position: relative;
+}
+.texture-card:hover { border-color: rgba(200,180,120,0.12); transform: translateY(-2px); }
+.texture-card img { width: 100%; height: 100%; object-fit: cover; }
+.texture-card .texture-name {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 4px 8px; background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  font-size: 10px; color: rgba(255,255,255,0.6);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.texture-card .del-texture {
+  position: absolute; top: 4px; right: 4px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.5);
+  font-size: 11px; display: none; align-items: center;
+  justify-content: center; cursor: pointer;
+}
+.texture-card:hover .del-texture { display: flex; }
+
+/* 3D 模型查看器 overlay */
+.model-viewer-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 999; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.model-viewer-overlay.show { display: flex; }
+.model-viewer-wrap {
+  width: 90%; height: 85%; max-width: 1300px;
+  background: linear-gradient(160deg, #0a0818, #06040e);
+  border: 1px solid rgba(200,180,120,0.1);
+  border-radius: 16px; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.model-viewer-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: rgba(0,0,0,0.3); flex-shrink: 0;
+}
+.model-viewer-info { display: flex; flex-direction: column; gap: 2px; }
+.model-viewer-name { font-size: 16px; color: var(--accent-1); font-weight: 600; letter-spacing: 1px; }
+.model-viewer-meta { font-size: 10px; color: var(--text-quaternary); }
+.model-viewer-controls { display: flex; gap: 6px; }
+.btn-viewer {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px; color: var(--text-tertiary);
+  padding: 6px 14px; cursor: pointer; font-size: 14px; transition: all 0.2s;
+}
+.btn-viewer:hover { background: rgba(200,180,120,0.08); color: var(--accent-1); }
+.model-viewer-canvas {
+  flex: 1; position: relative; cursor: grab;
+  min-height: 300px;
+}
+.model-viewer-canvas:active { cursor: grabbing; }
+
+/* 查看器贴图面板 */
+.viewer-texture-panel {
+  width: 0; overflow: hidden;
+  background: linear-gradient(180deg, rgba(10,8,24,0.95), rgba(10,8,24,0.98));
+  border-left: 1px solid rgba(255,255,255,0.04);
+  transition: width 0.3s ease;
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+}
+.viewer-texture-panel.open { width: 200px; }
+.vtp-title {
+  font-size: 11px; color: var(--accent-1); letter-spacing: 2px;
+  padding: 12px 14px 8px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+.vtp-slots {
+  display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  flex-shrink: 0;
+}
+.vtp-slot {
+  padding: 2px 6px; font-size: 9px; border-radius: 4px;
+  cursor: pointer; transition: all 0.15s;
+  background: rgba(255,255,255,0.02); border: 1px solid transparent;
+  color: var(--text-quaternary); letter-spacing: 0.5px;
+}
+.vtp-slot:hover { color: var(--text-secondary); background: rgba(200,180,120,0.04); }
+.vtp-slot.active { color: var(--accent-1); background: rgba(200,180,120,0.08); border-color: rgba(200,180,120,0.12); }
+.vtp-slot.filled::after { content: '●'; color: var(--accent-1); margin-left: 2px; font-size: 6px; }
+.vtp-list {
+  flex: 1; overflow-y: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.vtp-list::-webkit-scrollbar { width: 2px; }
+.vtp-list::-webkit-scrollbar-thumb { background: rgba(200,180,120,0.1); border-radius: 1px; }
+.vtp-empty {
+  font-size: 10px; color: var(--text-quaternary); text-align: center;
+  padding: 24px 8px; line-height: 1.6;
+}
+.vtp-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 6px;
+  cursor: pointer; transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.vtp-item:hover { background: rgba(200,180,120,0.04); border-color: rgba(200,180,120,0.08); }
+.vtp-item.active { background: rgba(200,180,120,0.08); border-color: rgba(200,180,120,0.15); }
+.vtp-item img {
+  width: 32px; height: 32px; border-radius: 4px;
+  object-fit: cover; flex-shrink: 0;
+  background: rgba(0,0,0,0.2);
+}
+.vtp-item .vtp-name {
+  font-size: 10px; color: var(--text-tertiary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+}
+.vtp-clear {
+  margin: 8px; padding: 5px 10px; font-size: 10px;
+  border-radius: 4px; cursor: pointer; transition: all 0.2s;
+  background: rgba(255,80,80,0.04); border: 1px solid rgba(255,80,80,0.08);
+  color: rgba(255,100,100,0.5); flex-shrink: 0;
+}
+.vtp-clear:hover { background: rgba(255,80,80,0.08); color: rgba(255,100,100,0.8); }
+.vtp-params {
+  flex-shrink: 0; max-height: 0; overflow: hidden;
+  transition: max-height 0.25s ease;
+  border-top: 1px solid rgba(255,255,255,0.03);
+}
+.vtp-params.open { max-height: 300px; overflow-y: auto; }
+.vtp-params::-webkit-scrollbar { width: 2px; }
+.vtp-params::-webkit-scrollbar-thumb { background: rgba(200,180,120,0.1); border-radius: 1px; }
+.vtp-params .sp-row {
+  padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.02);
+}
+.vtp-params .sp-row:last-child { border-bottom: none; }
+.vtp-params .sp-label {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;
+}
+.vtp-params .sp-label span:first-child { font-size: 10px; color: var(--text-tertiary); }
+.vtp-params .sp-label input[type="number"] {
+  width: 52px; padding: 1px 4px; font-size: 9px; border-radius: 3px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: var(--accent-1); text-align: right; outline: none;
+}
+.vtp-params input[type="range"] {
+  width: 100%; height: 2px; -webkit-appearance: none;
+  background: rgba(200,180,120,0.1); border-radius: 2px; outline: none; cursor: pointer;
+}
+.vtp-params input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent-1); cursor: pointer; border: none;
+}
+.vtp-params select {
+  width: 100%; padding: 3px 6px; font-size: 10px; border-radius: 4px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-secondary); outline: none; cursor: pointer;
+}
+.vtp-params-btn {
+  flex-shrink: 0; padding: 5px 10px; font-size: 10px; cursor: pointer;
+  transition: all 0.2s; border: none; background: rgba(200,180,120,0.04);
+  color: var(--text-tertiary); letter-spacing: 1px;
+}
+.vtp-params-btn:hover { background: rgba(200,180,120,0.1); color: var(--accent-1); }
+.vtp-upload { padding: 6px 8px; border-top: 1px solid rgba(255,255,255,0.03); flex-shrink: 0; }
+.vtp-upload-btn { width: 100%; padding: 5px 0; font-size: 10px; border-radius: 4px;
+  cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
+  background: rgba(122,216,192,0.06); border: 1px solid rgba(122,216,192,0.1);
+  color: var(--accent-2); }
+.vtp-upload-btn:hover { background: rgba(122,216,192,0.12); }
+
+/* 模型卡片贴图关联 */
+.model-tex-badge {
+  position: absolute; top: 6px; right: 6px;
+  font-size: 14px; width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(200,180,120,0.1);
+  border: 1px solid rgba(200,180,120,0.15);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+
+/* 模型贴图选择器弹出 */
+.tex-picker-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 500; display: none;
+}
+.tex-picker-overlay.show { display: block; }
+.tex-picker-popup {
+  position: absolute;
+  width: 200px; max-height: 240px;
+  background: rgba(10,8,24,0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(200,180,120,0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 501;
+}
+.tex-picker-title {
+  font-size: 10px; color: var(--accent-1); letter-spacing: 2px;
+  padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+.tex-picker-list {
+  flex: 1; overflow-y: auto; padding: 6px;
+}
+.tex-picker-list::-webkit-scrollbar { width: 2px; }
+.tex-picker-list::-webkit-scrollbar-thumb { background: rgba(200,180,120,0.1); border-radius: 1px; }
+.tex-picker-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px; border-radius: 6px;
+  cursor: pointer; transition: all 0.15s;
+  font-size: 10px; color: var(--text-tertiary);
+}
+.tex-picker-item:hover { background: rgba(200,180,120,0.06); color: var(--accent-1); }
+.tex-picker-item img {
+  width: 24px; height: 24px; border-radius: 3px;
+  object-fit: cover; flex-shrink: 0;
+  background: rgba(0,0,0,0.2);
+}
+.tex-picker-item .tp-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+}
+.tex-picker-empty {
+  font-size: 10px; color: var(--text-quaternary);
+  text-align: center; padding: 16px 8px;
+}
+.tex-picker-none {
+  padding: 6px 12px; font-size: 10px; color: rgba(255,80,80,0.5);
+  cursor: pointer; transition: 0.15s; text-align: center;
+  border-top: 1px solid rgba(255,255,255,0.03);
+}
+.tex-picker-none:hover { color: rgba(255,80,80,0.8); background: rgba(255,80,80,0.03); }
+
+/* 参数滑块 */
+.tex-picker-list input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--accent-1);
+  cursor: pointer; border: none;
+}
+.tex-picker-list input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent-1); cursor: pointer; border: none;
+}
+
+/* 贴图预览大图 */
+.tex-preview-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 1000; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.tex-preview-overlay.show { display: flex; }
+.tex-preview-wrap {
+  width: 80%; height: 80%; max-width: 1000px;
+  background: linear-gradient(160deg, #0a0818, #06040e);
+  border: 1px solid rgba(200,180,120,0.1);
+  border-radius: 12px; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.tex-preview-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+.tex-preview-name { font-size: 14px; color: var(--accent-1); letter-spacing: 1px; }
+.tex-preview-body {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 20px; overflow: auto; position: relative;
+}
+.tex-preview-body img, .tex-preview-body canvas {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain; border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.tex-preview-loading {
+  color: var(--text-quaternary); font-size: 12px; letter-spacing: 2px;
+}
+
+/* 子页面通用 —— 缓进效果 */
+.sub-page {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(28px) scale(0.97);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+}
+.sub-page.show { 
+  opacity: 1; 
+  pointer-events: auto; 
+  transform: translateY(0) scale(1); 
+}
+/* 返回时：子页面快速缩出 */
+.sub-page.exiting {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.sub-page.exiting.show {
+  opacity: 0;
+  transform: translateY(20px) scale(0.96);
+  pointer-events: none;
+}
+.page-header {
+  flex-shrink: 0;
+  padding: 20px 80px;
+  background: linear-gradient(180deg, rgba(10,8,24,0.8) 0%, rgba(10,8,24,0) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.page-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-1);
+  letter-spacing: 4px;
+}
+.page-subtitle {
+  font-size: 11px;
+  color: var(--text-quaternary);
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+.page-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 80px 40px;
+}
+.page-body::-webkit-scrollbar { width: 4px; }
+.page-body::-webkit-scrollbar-thumb {
+  background: rgba(200,180,120,0.1);
+  border-radius: 2px;
+}
+.section-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 16px;
+  color: var(--accent-1);
+  letter-spacing: 2px;
+  margin: 24px 0 14px;
+  padding-left: 10px;
+  border-left: 3px solid rgba(200,180,120,0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(200,180,120,0.08), transparent);
+  margin-left: 10px;
+}
+
+/* 作品集页面 */
+.upload-container {
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.upload-area {
+  border: 2px dashed rgba(200,180,120,0.15);
+  border-radius: 12px;
+  padding: 48px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 16px;
+  background: rgba(0,0,0,0.1);
+}
+.upload-area:hover, .upload-area.drag-over {
+  border-color: rgba(200,180,120,0.3);
+  background: rgba(200,180,120,0.02);
+}
+.upload-area .icon { font-size: 36px; color: rgba(200,180,120,0.2); margin-bottom: 10px; }
+.upload-area .text { font-size: 13px; color: var(--text-secondary); letter-spacing: 1px; }
+.upload-area .hint { font-size: 10px; color: var(--text-quaternary); margin-top: 6px; }
+.btn-primary {
+  background: rgba(122,216,192,0.08);
+  border: 1px solid rgba(122,216,192,0.15);
+  border-radius: 6px;
+  color: var(--accent-2);
+  padding: 8px 24px;
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.btn-primary:hover { background: rgba(122,216,192,0.15); }
+
+.file-list { margin-top: 8px; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.file-item .file-icon { font-size: 20px; color: rgba(200,180,120,0.3); width: 28px; text-align: center; }
+.file-item .file-info { flex: 1; min-width: 0; }
+.file-item .file-name { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .file-meta { font-size: 10px; color: var(--text-quaternary); margin-top: 3px; }
+.file-item .file-progress {
+  width: 100%; height: 2px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 1px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.file-item .progress-bar {
+  height: 100%;
+  background: var(--accent-2);
+  border-radius: 1px;
+  width: 0%;
+  transition: width 0.5s;
+}
+.file-item .file-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.file-item .file-actions button {
+  background: transparent; border: none;
+  font-size: 14px; color: rgba(255,255,255,0.2);
+  cursor: pointer; transition: 0.2s; padding: 4px;
+}
+.file-item .file-actions button:hover { color: var(--accent-1); }
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.preview-card {
+  background: rgba(0,0,0,0.15);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 1/1;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.preview-card:hover {
+  border-color: rgba(200,180,120,0.15);
+  transform: translateY(-2px);
+}
+.preview-card img, .preview-card video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0.85;
+  transition: 0.3s;
+}
+.preview-card:hover img, .preview-card:hover video { opacity: 1; transform: scale(1.05); }
+.preview-card .preview-name {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 6px 10px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.empty-tip {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-quaternary);
+  font-size: 12px;
+  grid-column: 1/-1;
+}
+
+/* AI漫剧工坊 */
+.drama-layout {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+  position: relative;
+}
+.drama-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 16px 10px;
+  overflow-y: auto;
+  transition: max-height 0.35s ease, padding 0.35s ease, border-radius 0.35s ease, backdrop-filter 0.35s ease;
+}
+.drama-sidebar::-webkit-scrollbar { width: 2px; }
+.drama-sidebar::-webkit-scrollbar-thumb { background: rgba(200,180,120,0.1); border-radius: 1px; }
+
+.sidebar-menu-title {
+  font-size: 10px;
+  color: rgba(200,180,120,0.3);
+  letter-spacing: 3px;
+  padding: 8px 10px 4px;
+  text-transform: uppercase;
+}
+.sidebar-menu-item {
+  display: block;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 1px;
+  border-left: 2px solid transparent;
+}
+.sidebar-menu-item:hover {
+  color: var(--accent-1);
+  background: rgba(200,180,120,0.04);
+  border-left-color: var(--accent-1);
+}
+.sidebar-menu-item.active {
+  color: var(--accent-1);
+  background: rgba(200,180,120,0.06);
+  border-left-color: var(--accent-1);
+}
+
+.drama-content {
+  flex: 1;
+  min-width: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 24px 28px;
+  overflow-y: auto;
+  position: relative;
+  transition: margin-right 0.3s ease;
+}
+.drama-content.ai-open { margin-right: 320px; }
+.drama-content::-webkit-scrollbar { width: 4px; }
+.drama-content::-webkit-scrollbar-thumb { background: rgba(200,180,120,0.12); border-radius: 2px; }
+
+.drama-content .main-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  background: linear-gradient(90deg, var(--accent-1), #e8d48a, var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.drama-content .main-subtitle {
+  font-size: 12px;
+  color: var(--text-quaternary);
+  letter-spacing: 4px;
+  margin-bottom: 40px;
+  text-align: center;
+}
+.drama-content .feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+.drama-content .feature-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 20px 16px;
+  transition: all 0.3s;
+  cursor: pointer;
+  text-align: center;
+}
+.drama-content .feature-card:hover {
+  border-color: rgba(200,180,120,0.15);
+  transform: translateY(-3px);
+  background: rgba(255,255,255,0.03);
+}
+.drama-content .feature-icon { font-size: 28px; margin-bottom: 10px; }
+.drama-content .feature-name { font-size: 13px; color: var(--text-secondary); letter-spacing: 1px; margin-bottom: 4px; }
+.drama-content .feature-desc { font-size: 10px; color: var(--text-quaternary); line-height: 1.6; }
+
+/* 项目工具栏 */
+.project-toolbar {
+  position: sticky;
+  top: -24px;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  margin: -24px -28px 20px;
+  background: linear-gradient(180deg, rgba(10,8,24,0.9) 0%, rgba(10,8,24,0.6) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px 12px 0 0;
+}
+.project-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+.project-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.project-selector:hover {
+  border-color: rgba(200,180,120,0.2);
+  background: rgba(200,180,120,0.04);
+}
+.project-selector .project-name-text {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-1);
+  letter-spacing: 1px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  min-width: 220px;
+  background: rgba(10,8,24,0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 8px 0;
+  display: none;
+  z-index: 20;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.project-dropdown.show { display: block; }
+.project-item {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.project-item:hover {
+  background: rgba(200,180,120,0.06);
+  color: var(--accent-1);
+}
+.project-item.active {
+  color: var(--accent-1);
+  background: rgba(200,180,120,0.08);
+}
+.project-item .del-btn {
+  opacity: 0;
+  font-size: 12px;
+  color: rgba(255,100,100,0.5);
+  transition: opacity 0.2s;
+}
+.project-item:hover .del-btn { opacity: 1; }
+.project-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 6px 0;
+}
+.project-new-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--accent-2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.project-new-btn:hover { background: rgba(122,216,192,0.06); }
+
+.project-toolbar-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.edit-switch {
+  display: flex;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.edit-switch span {
+  padding: 6px 14px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+.edit-switch span.active {
+  background: rgba(200,180,120,0.1);
+  color: var(--accent-1);
+}
+.btn-save, .btn-ai {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+  border: 1px solid;
+}
+.btn-save {
+  background: rgba(200,180,120,0.1);
+  border-color: rgba(200,180,120,0.2);
+  color: var(--accent-1);
+}
+.btn-save:hover { background: rgba(200,180,120,0.18); }
+.btn-export, .btn-import {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid rgba(200,180,120,0.15);
+  background: rgba(200,180,120,0.05);
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+.btn-export:hover, .btn-import:hover {
+  background: rgba(200,180,120,0.12);
+  color: var(--accent-1);
+  border-color: rgba(200,180,120,0.25);
+}
+.btn-ai {
+  background: rgba(122,216,192,0.1);
+  border-color: rgba(122,216,192,0.2);
+  color: var(--accent-2);
+}
+.btn-ai:hover { background: rgba(122,216,192,0.18); }
+
+/* AI助手面板 */
+.ai-panel {
+  position: absolute;
+  top: 0;
+  right: -340px;
+  width: 320px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(15,12,30,0.95) 0%, rgba(10,8,24,0.95) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(122,216,192,0.15);
+  border-radius: 12px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s ease;
+  overflow: hidden;
+}
+.ai-panel.open { right: 0; }
+.ai-panel-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ai-panel-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-2);
+  letter-spacing: 2px;
+}
+.ai-panel-close {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  transition: color 0.2s;
+}
+.ai-panel-close:hover { color: var(--accent-1); }
+
+.ai-function-select {
+  padding: 10px 16px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ai-func-tag {
+  padding: 4px 10px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ai-func-tag:hover, .ai-func-tag.active {
+  color: var(--accent-2);
+  border-color: rgba(122,216,192,0.2);
+  background: rgba(122,216,192,0.06);
+}
+
+.ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-messages::-webkit-scrollbar { width: 3px; }
+.ai-messages::-webkit-scrollbar-thumb { background: rgba(122,216,192,0.15); border-radius: 2px; }
+
+.ai-msg {
+  max-width: 90%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.7;
+  word-wrap: break-word;
+}
+.ai-msg.user {
+  align-self: flex-end;
+  background: rgba(122,216,192,0.1);
+  border: 1px solid rgba(122,216,192,0.15);
+  color: var(--text-secondary);
+}
+.ai-msg.bot {
+  align-self: flex-start;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--text-tertiary);
+}
+.ai-msg .insert-btn {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 10px;
+  font-size: 10px;
+  color: var(--accent-1);
+  border: 1px solid rgba(200,180,120,0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ai-msg .insert-btn:hover { background: rgba(200,180,120,0.1); }
+
+.ai-input-area {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  gap: 8px;
+}
+.ai-input-area textarea {
+  flex: 1;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: none;
+  height: 60px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.ai-input-area textarea:focus { border-color: rgba(122,216,192,0.3); }
+.ai-send-btn {
+  align-self: flex-end;
+  padding: 8px 14px;
+  background: rgba(122,216,192,0.15);
+  border: 1px solid rgba(122,216,192,0.25);
+  border-radius: 6px;
+  color: var(--accent-2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ai-send-btn:hover { background: rgba(122,216,192,0.25); }
+
+/* 编辑模式 */
+.edit-mode .editable-text { display: none; }
+.edit-mode .edit-input,
+.edit-mode .edit-textarea { display: block; }
+.edit-input, .edit-textarea {
+  display: none;
+  width: 100%;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(200,180,120,0.2);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: inherit;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+  margin: 4px 0;
+}
+.edit-input:focus, .edit-textarea:focus {
+  border-color: var(--accent-1);
+  box-shadow: 0 0 0 2px rgba(200,180,120,0.1);
+}
+.edit-textarea {
+  resize: vertical;
+  min-height: 60px;
+  line-height: 1.8;
+}
+
+/* 剧本内导航 */
+.script-subnav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-wrap: wrap;
+}
+.script-subnav-item {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+.script-subnav-item:hover {
+  color: var(--accent-1);
+  background: rgba(200,180,120,0.04);
+}
+.script-subnav-item.active {
+  color: var(--accent-1);
+  background: rgba(200,180,120,0.08);
+}
+
+/* 设定集内容 */
+.setting-chapter {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+.setting-chapter.active { display: block; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.setting-chapter h3 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 20px;
+  color: var(--accent-1);
+  letter-spacing: 3px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(200,180,120,0.08);
+}
+.setting-chapter h4 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 18px 0 8px;
+  letter-spacing: 1px;
+}
+.setting-chapter p {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.9;
+  margin-bottom: 8px;
+}
+.setting-chapter ul { list-style: none; padding-left: 12px; }
+.setting-chapter li {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 2;
+  padding-left: 12px;
+  position: relative;
+}
+.setting-chapter li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--accent-1);
+  font-weight: bold;
+}
+
+/* 剧本内图片上传 */
+.img-upload-box {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border: 2px dashed rgba(200,180,120,0.15);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  background: rgba(0,0,0,0.1);
+  transition: all 0.3s;
+}
+.img-upload-box:hover { border-color: rgba(200,180,120,0.3); }
+.img-upload-box img, .img-upload-box video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.img-upload-box .upload-hint {
+  font-size: 11px;
+  color: var(--text-quaternary);
+  text-align: center;
+}
+.img-upload-box .upload-hint .icon { font-size: 24px; margin-bottom: 6px; display: block; }
+
+/* 角色卡片带图 */
+.char-card.has-cover .char-cover {
+  width: 100%;
+  aspect-ratio: 3/4;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.2);
+}
+.char-card.has-cover .char-cover img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+
+/* 世界分层 */
+.layer-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 16px 0;
+}
+.layer-item { padding: 14px 18px; border-radius: 8px; transition: 0.2s; }
+.layer-item:hover { transform: translateX(2px); }
+.layer-item .l-name { font-size: 15px; font-weight: 700; letter-spacing: 2px; margin-bottom: 4px; }
+.layer-item .l-desc { font-size: 12px; color: var(--text-tertiary); line-height: 1.7; }
+.layer-human {
+  background: linear-gradient(135deg, rgba(60,80,120,0.08), rgba(40,50,80,0.02));
+  border: 1px solid rgba(100,140,200,0.1);
+}
+.layer-human .l-name { color: #7aacd8; }
+.layer-demon {
+  background: linear-gradient(135deg, rgba(120,40,60,0.08), rgba(60,20,40,0.02));
+  border: 1px solid rgba(200,80,100,0.1);
+}
+.layer-demon .l-name { color: #d87a7a; }
+.layer-cultivator {
+  background: linear-gradient(135deg, rgba(60,120,80,0.08), rgba(30,60,50,0.02));
+  border: 1px solid rgba(80,180,120,0.1);
+}
+.layer-cultivator .l-name { color: #7ad8a0; }
+.layer-arrow {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(200,180,120,0.15);
+  padding: 4px 0;
+  letter-spacing: 3px;
+}
+
+/* 角色卡片 */
+.char-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.char-card {
+  background: linear-gradient(160deg, rgba(255,255,255,0.03) 0%, rgba(200,180,120,0.01) 100%);
+  border: 1px solid rgba(200,180,120,0.06);
+  border-radius: 10px;
+  padding: 16px 18px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.char-card:hover {
+  border-color: rgba(200,180,120,0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+.char-card .cname {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-1);
+  letter-spacing: 2px;
+}
+.char-card .rtag {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 8px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-weight: 500;
+}
+.r-main { background: rgba(200,180,120,0.1); color: #c8b478; border: 1px solid rgba(200,180,120,0.15); }
+.r-ally { background: rgba(100,180,120,0.08); color: #7ad89a; border: 1px solid rgba(100,180,120,0.1); }
+.r-enemy { background: rgba(200,80,80,0.08); color: #d87878; border: 1px solid rgba(200,80,80,0.1); }
+.r-neutral { background: rgba(120,120,180,0.08); color: #8888c8; border: 1px solid rgba(120,120,180,0.1); }
+.char-card .cinfo { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; line-height: 1.7; }
+.char-card .ctags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+.char-card .ctags span {
+  font-size: 9px;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: rgba(200,180,120,0.04);
+  border: 1px solid rgba(200,180,120,0.06);
+  color: rgba(200,180,120,0.35);
+}
+
+/* 表格 */
+.table-wrap {
+  overflow-x: auto;
+  margin: 12px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(200,180,120,0.06);
+}
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th {
+  background: rgba(200,180,120,0.03);
+  color: var(--accent-1);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  padding: 8px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(200,180,120,0.06);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+tbody tr:hover { background: rgba(200,180,120,0.02); }
+
+/* 剧情时间轴 */
+.plot-timeline {
+  position: relative;
+  padding-left: 30px;
+  margin: 16px 0;
+}
+.plot-timeline::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 6px; bottom: 6px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(200,180,120,0.2), rgba(200,180,120,0.02));
+}
+.plot-item {
+  position: relative;
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(200,180,120,0.05);
+  border-radius: 6px;
+  transition: 0.2s;
+}
+.plot-item:hover {
+  border-color: rgba(200,180,120,0.1);
+  transform: translateX(2px);
+}
+.plot-item::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  top: 14px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent-1);
+  border: 2px solid #08080f;
+  box-shadow: 0 0 0 2px rgba(200,180,120,0.1);
+}
+.plot-item .pv {
+  font-size: 10px;
+  color: var(--accent-1);
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+.plot-item .ps {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  line-height: 1.7;
+}
+
+/* 素材库样式 */
+.asset-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.asset-tab {
+  padding: 8px 20px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.asset-tab:hover { color: var(--accent-1); }
+.asset-tab.active {
+  color: var(--accent-1);
+  border-bottom-color: var(--accent-1);
+}
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.asset-item {
+  aspect-ratio: 1/1;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.05);
+  transition: all 0.3s;
+  background: rgba(0,0,0,0.15);
+}
+.asset-item:hover {
+  border-color: rgba(200,180,120,0.2);
+  transform: translateY(-2px);
+}
+.asset-item img, .asset-item video {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.asset-item .asset-name {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 6px 8px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.asset-item .del-asset {
+  position: absolute; top: 6px; right: 6px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.asset-item:hover .del-asset { display: flex; }
+
+/* 风格引擎样式 */
+.style-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.style-card {
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s;
+  position: relative;
+}
+.style-card:hover { transform: translateY(-3px); }
+.style-card.active {
+  border-color: var(--accent-1);
+  box-shadow: 0 0 20px rgba(200,180,120,0.15);
+}
+.style-card .style-preview {
+  aspect-ratio: 3/4;
+  background: linear-gradient(135deg, #2a2040, #101020);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+}
+.style-card.s1 .style-preview { background: linear-gradient(135deg, #3d2c1a, #1a1208); }
+.style-card.s2 .style-preview { background: linear-gradient(135deg, #1a2d3d, #081018); }
+.style-card.s3 .style-preview { background: linear-gradient(135deg, #3d1a2d, #180810); }
+.style-card.s4 .style-preview { background: linear-gradient(135deg, #2d3d1a, #101808); }
+.style-card.s5 .style-preview { background: linear-gradient(135deg, #1a1a3d, #080818); }
+.style-card.s6 .style-preview { background: linear-gradient(135deg, #3d351a, #181508); }
+.style-card .style-info {
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+}
+.style-card .style-name {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.style-card .style-desc {
+  font-size: 10px;
+  color: var(--text-quaternary);
+  line-height: 1.5;
+}
+
+/* 批量渲染样式 */
+.render-task-list { display: flex; flex-direction: column; gap: 10px; }
+.render-task {
+  padding: 14px 18px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.render-task .task-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-wait { background: #8888c8; }
+.status-running { background: var(--accent-2); animation: blink 1.5s infinite; }
+.status-done { background: var(--accent-1); }
+.status-fail { background: #d87878; }
+@keyframes blink { 50% { opacity: 0.3; } }
+.render-task .task-info { flex: 1; min-width: 0; }
+.render-task .task-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.render-task .task-meta {
+  font-size: 10px;
+  color: var(--text-quaternary);
+  display: flex;
+  gap: 16px;
+}
+.render-task .task-progress {
+  width: 120px;
+  height: 4px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.render-task .task-progress-bar {
+  height: 100%;
+  background: var(--accent-2);
+  width: 0%;
+  transition: width 0.5s;
+}
+.render-task .task-actions {
+  display: flex;
+  gap: 8px;
+}
+.render-task .task-actions button {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-tertiary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.render-task .task-actions button:hover {
+  border-color: var(--accent-1);
+  color: var(--accent-1);
+}
+
+/* 其他工具页 */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+.tool-card {
+  background: linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(200,180,120,0.01) 100%);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 18px 20px;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.tool-card:hover {
+  border-color: rgba(200,180,120,0.12);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.tool-card .tool-name {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-1);
+  letter-spacing: 2px;
+}
+.tool-card .tool-desc { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; line-height: 1.7; }
+.tool-card .tool-status {
+  display: inline-block;
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+  margin-top: 10px;
+  background: rgba(122,216,192,0.06);
+  color: var(--accent-2);
+  border: 1px solid rgba(122,216,192,0.1);
+}
+.tool-card .tool-status.dev {
+  background: rgba(200,180,120,0.06);
+  color: var(--accent-1);
+  border-color: rgba(200,180,120,0.1);
+}
+.tool-card .tool-status.coming {
+  background: rgba(120,120,180,0.06);
+  color: #8888c8;
+  border-color: rgba(120,120,180,0.1);
+}
+
+@media (max-width: 768px) {
+  .page-header, .page-body { padding-left: 24px; padding-right: 24px; }
+  .drama-layout { flex-direction: column; }
+  .drama-sidebar { width: 100%; max-height: 200px; }
+  .drama-sidebar::-webkit-scrollbar { width: 0; }
+  .drama-content .feature-grid { grid-template-columns: 1fr; }
+  .project-toolbar { flex-direction: column; gap: 10px; align-items: flex-start; }
+  .ai-panel { width: 100%; right: -100%; }
+  .drama-content.ai-open { margin-right: 0; }
+  .page-body::-webkit-scrollbar { width: 2px; }
+  .mod-card { min-width: 220px; max-width: 100%; }
+}
+
+/* 移动端性能降级：blur 缩小 */
+@media (max-width: 480px) {
+  .mod-card { backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4); }
+  .upload-container { backdrop-filter: blur(8px) saturate(1.2); -webkit-backdrop-filter: blur(8px) saturate(1.2); }
+  .drama-content { backdrop-filter: blur(8px) saturate(1.2); -webkit-backdrop-filter: blur(8px) saturate(1.2); }
+  .drama-sidebar { backdrop-filter: blur(8px) saturate(1.2); -webkit-backdrop-filter: blur(8px) saturate(1.2); max-height: 140px; }
+  .ai-panel { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .project-dropdown { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .mod-card { padding: 32px 20px 28px; }
+  .modules-grid { gap: 20px; }
+  .page-header { padding: 14px 24px; }
+  .page-title { font-size: 22px; }
+  .ice-sub { font-size: clamp(12px, 2.5vw, 16px); }
+  .hero-screen .hint { font-size: clamp(11px, 2vw, 12px); }
+  .hero-screen .ice-title { font-size: clamp(36px, 12vw, 120px); letter-spacing: clamp(4px, 1.5vw, 12px); }
+
+  /* 文件列表在手机端自适应 */
+  .file-item { flex-wrap: wrap; gap: 8px; }
+  .file-item .file-info { width: 100%; order: 3; }
+  .file-item .file-actions { flex-shrink: 0; }
+  .file-item .file-name { font-size: 11px; }
+
+  /* 预览网格手机适配 */
+  .preview-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .asset-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .char-grid { grid-template-columns: 1fr; }
+  .tool-grid { grid-template-columns: 1fr; }
+  .style-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .feature-grid { gap: 10px; }
+
+  /* AI漫剧侧栏在手机上横滚模式 */
+  .drama-sidebar { display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: none; padding: 10px; gap: 4px; }
+  .drama-sidebar .sidebar-menu-title { display: none; }
+  .drama-sidebar .sidebar-menu-item { white-space: nowrap; padding: 6px 14px; flex-shrink: 0; border-left: none; border-bottom: 2px solid transparent; margin-bottom: 0; }
+  .drama-sidebar .sidebar-menu-item.active { border-left: none; border-bottom-color: var(--accent-1); }
+
+  /* 页面体在手机上减少内边距 */
+  .page-body { padding-left: 16px !important; padding-right: 16px !important; }
+  .drama-content { padding: 16px; }
+  .drama-content .main-title { font-size: 26px; letter-spacing: 3px; }
+  .project-toolbar { padding: 10px 12px; margin: -16px -16px 14px; }
+  .project-selector .project-name-text { font-size: 14px; max-width: 140px; }
+  .page-header { padding: 12px 16px !important; }
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="this.src='https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'" onload="if(typeof THREE==='undefined'&&this.src.indexOf('jsdelivr')<0)this.src='https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'"></script>
+<script>window._3dReady=typeof THREE!=='undefined';</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TGALoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+</head>
+<body>
+
+<!-- 背景音乐 -->
+<audio id="bgMusic" loop preload="auto">
+  <source src="Cornfield Chase.mp3" type="audio/mpeg">
+</audio>
+
+<canvas id="galaxy-canvas"></canvas>
+<canvas id="title-particles-canvas"></canvas>
+
+<div class="audio-control control-btn" id="audioControl" onclick="toggleAudio()">🔊</div>
+<div class="back-btn control-btn" id="backBtn" onclick="goBack()">←</div>
+
+<!-- 首页 -->
+<div class="hero-screen" id="heroScreen">
+  <h1 class="ice-title" id="iceTitle">ICE Bang!</h1>
+  <h2 class="ice-sub">— AI驱动的全流程漫画创作平台 —</h2>
+  <p class="ice-tagline">以AI赋能每一格故事</p>
+  <p class="hint">✦ 点击进入 ✦</p>
+</div>
+
+<!-- 模块选择页 -->
+<div class="modules-wrap" id="modulesWrap">
+  <div class="modules-grid">
+    <div class="mod-card m1" tabindex="0" role="button" onclick="openSubPage('portfolio')" onkeydown="if(event.key==='Enter'||event.key===' ')openSubPage('portfolio')">
+      <span class="icon">📂</span>
+      <div class="name">作品集</div>
+      <div class="desc">Portfolio</div>
+    </div>
+    <div class="mod-card m2" tabindex="0" role="button" onclick="openSubPage('drama')" onkeydown="if(event.key==='Enter'||event.key===' ')openSubPage('drama')">
+      <span class="icon">🎬</span>
+      <div class="name">AI漫剧工坊</div>
+      <div class="desc">AI Comic Workshop</div>
+    </div>
+    <div class="mod-card m3" tabindex="0" role="button" onclick="openSubPage('other')" onkeydown="if(event.key==='Enter'||event.key===' ')openSubPage('other')">
+      <span class="icon">🔮</span>
+      <div class="name">其他</div>
+      <div class="desc">More Projects</div>
+    </div>
+  </div>
+  <div class="ft">✦ ICE Bang! · 以AI赋能创意 ✦</div>
+</div>
+
+<!-- 作品集页面 · 3D建模版 -->
+<div class="sub-page" id="page-portfolio">
+  <div class="page-header">
+    <div class="page-title">作品集</div>
+    <div class="page-subtitle">3D模型 · 贴图 · 作品展示</div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">📤 上传资产 <span class="demo-badge">本地存储</span></div>
+    <div class="upload-container">
+      <div class="upload-tabs">
+        <span class="upload-tab active" onclick="switchPortfolioTab('model')">🧊 模型</span>
+        <span class="upload-tab" onclick="switchPortfolioTab('texture')">🎨 贴图</span>
+        <span class="upload-tab" onclick="switchPortfolioTab('all')">📂 全部</span>
+      </div>
+      <div class="upload-area" id="portfolioUploadArea">
+        <div class="icon">📤</div>
+        <div class="text">点击或拖拽文件到此处</div>
+        <div class="hint" id="portfolioUploadHint">支持 .glb / .obj / .fbx / .stl · 贴图 .png / .jpg / .tga</div>
+        <input type="file" id="portfolioFileInput" style="display:none" multiple accept=".glb,.gltf,.obj,.fbx,.stl,.png,.jpg,.jpeg,.tga">
+      </div>
+    </div>
+
+    <div class="section-title">🧊 模型库</div>
+    <div class="model-grid" id="modelGrid">
+      <div class="empty-tip">暂无模型，上传 .glb / .obj 后在此展示</div>
+    </div>
+
+    <div class="section-title">🎨 贴图库</div>
+    <div class="texture-grid" id="textureGrid">
+      <div class="empty-tip">暂无贴图，上传 .png / .jpg 后在此展示</div>
+    </div>
+  </div>
+</div>
+
+<!-- 3D 模型查看器 -->
+<div class="model-viewer-overlay" id="modelViewer">
+  <div class="model-viewer-wrap">
+    <div class="model-viewer-header">
+      <div class="model-viewer-info">
+        <span class="model-viewer-name" id="viewerModelName">模型名称</span>
+        <span class="model-viewer-meta" id="viewerModelMeta">顶点: -- | 三角面: --</span>
+      </div>
+      <div class="model-viewer-controls">
+        <button class="btn-viewer" onclick="viewerScreenshot()" title="截图">📷</button>
+        <button class="btn-viewer" onclick="toggleViewerWireframe()" title="线框">🔲</button>
+        <button class="btn-viewer" onclick="toggleViewerUV()" title="UV棋盘格">🏁</button>
+        <button class="btn-viewer" onclick="toggleViewerAutoRotate()" title="自动旋转">🔄</button>
+        <button class="btn-viewer" onclick="resetViewerCamera()" title="重置视角(F)">🎯</button>
+        <button class="btn-viewer" onclick="toggleTexturePanel()" title="贴图面板">🎨</button>
+        <button class="btn-viewer" onclick="closeModelViewer()" title="关闭(Esc)">✕</button>
+      </div>
+    </div>
+    <div style="display:flex;flex:1;min-height:0;">
+      <div class="model-viewer-canvas" id="modelViewerCanvas"></div>
+      <div class="viewer-texture-panel" id="viewerTexturePanel">
+        <div class="vtp-title">贴图库</div>
+        <div class="vtp-slots" id="vtpSlots"></div>
+        <div class="vtp-list" id="vtpList">
+          <div class="vtp-empty">暂无贴图<br>可在作品集页面上传</div>
+        </div>
+        <div class="vtp-upload" id="vtpUpload">
+          <input type="file" id="vtpFileInput" style="display:none" multiple accept=".png,.jpg,.jpeg,.tga">
+          <button class="vtp-upload-btn" onclick="document.getElementById('vtpFileInput').click()">📤 添加贴图</button>
+        </div>
+        <div class="vtp-params" id="vtpParams"></div>
+        <button class="vtp-clear" onclick="clearViewerTexture()">🗑 清除贴图</button>
+        <button class="vtp-params-btn" onclick="toggleViewerParams()">⚙ 参数</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 模型贴图选择器 -->
+<div class="tex-picker-overlay" id="texPicker" onclick="closeTexturePicker()">
+  <div class="tex-picker-popup" id="texPickerPopup" onclick="event.stopPropagation();">
+    <div class="tex-picker-title" id="texPickerTitle">🎨 贴图通道</div>
+    <div class="tex-picker-list" id="texPickerList" style="max-height:320px;"></div>
+    <div class="tex-picker-none" id="texPickerBackBtn" style="display:none;" onclick="showTextureSlots()">← 返回通道列表</div>
+  </div>
+</div>
+
+<!-- 贴图预览大图 -->
+<div class="tex-preview-overlay" id="texPreview">
+  <div class="tex-preview-wrap">
+    <div class="tex-preview-header">
+      <span class="tex-preview-name" id="texPreviewName">贴图名称</span>
+      <button class="btn-viewer" onclick="closeTexPreview()">✕</button>
+    </div>
+    <div class="tex-preview-body" id="texPreviewBody">
+      <div class="tex-preview-loading">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<!-- AI漫剧工坊页面 -->
+<div class="sub-page" id="page-drama">
+  <div class="page-header">
+    <div class="page-title">AI漫剧工坊</div>
+    <div class="page-subtitle">AI驱动的全流程漫画创作平台</div>
+  </div>
+  <div class="page-body" style="padding-top: 0; padding-bottom: 0;">
+    <div class="drama-layout" style="height: 100%;">
+      <div class="drama-sidebar">
+        <div class="sidebar-menu-title">核心功能</div>
+        <div class="sidebar-menu-item active" onclick="switchDramaTab('overview')">平台总览</div>
+        <div class="sidebar-menu-item" onclick="switchDramaTab('script')">剧本AI</div>
+        <div class="sidebar-menu-item" onclick="switchDramaTab('assets')">素材库</div>
+        <div class="sidebar-menu-item" onclick="switchDramaTab('style')">风格引擎</div>
+        <div class="sidebar-menu-item" onclick="switchDramaTab('render')">批量渲染</div>
+
+        <div class="sidebar-menu-title" style="margin-top: 16px;">创作工作流</div>
+        <div class="sidebar-menu-item" onclick="comingSoon()">项目管理</div>
+        <div class="sidebar-menu-item" onclick="comingSoon()">团队协作</div>
+        <div class="sidebar-menu-item" onclick="comingSoon()">导出中心</div>
+      </div>
+
+      <div class="drama-content" id="dramaContent">
+        <!-- 总览页 -->
+        <div id="drama-overview" class="setting-chapter active">
+          <div class="main-title">AI漫剧工坊</div>
+          <div class="main-subtitle">新一代 AI 漫画创作平台</div>
+          
+          <div class="feature-grid">
+            <div class="feature-card" onclick="switchDramaTab('script')">
+              <div class="feature-icon">✍️</div>
+              <div class="feature-name">剧本AI</div>
+              <div class="feature-desc">多项目管理 + AI智能创作</div>
+            </div>
+            <div class="feature-card" onclick="switchDramaTab('assets')">
+              <div class="feature-icon">🖼️</div>
+              <div class="feature-name">素材库</div>
+              <div class="feature-desc">图片视频素材统一管理</div>
+            </div>
+            <div class="feature-card" onclick="switchDramaTab('style')">
+              <div class="feature-icon">🎨</div>
+              <div class="feature-name">风格引擎</div>
+              <div class="feature-desc">一键切换漫剧美术风格</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 剧本AI页面 -->
+        <div id="drama-script" class="setting-chapter">
+          <!-- 项目工具栏 -->
+          <div class="project-toolbar">
+            <div class="project-toolbar-left">
+              <div class="project-selector" id="projectSelector" onclick="toggleProjectDropdown()">
+                <span class="project-name-text" id="currentProjectName">🏛️ 镇妖博物馆</span>
+                <span style="color:var(--text-tertiary);font-size:10px;">▼</span>
+              </div>
+              <div class="project-dropdown" id="projectDropdown">
+                <div id="projectList"></div>
+                <div class="project-divider"></div>
+                <div class="project-new-btn" onclick="newProject(event)">➕ 新建剧本项目</div>
+              </div>
+            </div>
+            <div class="project-toolbar-right">
+              <button class="btn-ai" onclick="toggleAIPanel()">🤖 AI助手</button>
+              <div class="edit-switch">
+                <span class="active" id="btn-preview" onclick="setEditMode(false)">预览</span>
+                <span id="btn-edit" onclick="setEditMode(true)">编辑</span>
+              </div>
+              <button class="btn-export" onclick="exportProjectData()" title="导出项目数据">📦</button>
+              <button class="btn-import" onclick="importProjectData()" title="导入项目数据">📥</button>
+              <button class="btn-save" onclick="saveCurrentProject()">💾 保存</button>
+            </div>
+          </div>
+
+          <!-- 剧本内二级导航 -->
+          <div class="script-subnav">
+            <div class="script-subnav-item active" onclick="switchScriptTab('worldview')">世界观设定</div>
+            <div class="script-subnav-item" onclick="switchScriptTab('characters')">主要角色</div>
+            <div class="script-subnav-item" onclick="switchScriptTab('monsters')">妖物图鉴</div>
+            <div class="script-subnav-item" onclick="switchScriptTab('artifacts')">法器道具</div>
+            <div class="script-subnav-item" onclick="switchScriptTab('story')">主线剧情</div>
+          </div>
+
+          <!-- 世界观设定 -->
+          <div id="script-worldview" class="setting-chapter active">
+            <!-- 世界观封面图上传 -->
+            <div class="img-upload-box" onclick="uploadWorldviewImg()" id="worldviewCover">
+              <div class="upload-hint">
+                <span class="icon">🖼️</span>
+                点击上传世界观背景图 / 视频
+              </div>
+            </div>
+
+            <h3 class="editable-text">世界观设定</h3>
+            <input class="edit-input" data-key="worldview-title" value="世界观设定">
+            
+            <h4 class="editable-text">时代背景</h4>
+            <input class="edit-input" data-key="worldview-h1" value="时代背景">
+            <p class="editable-text">故事发生在现代都市与古老妖界交织的平行世界。人类社会表面平静有序，实则自上古以来便与精怪妖物共存。多数人对超自然事物一无所知，仅少数传承者肩负着维系两界平衡的使命。</p>
+            <textarea class="edit-textarea" data-key="worldview-p1">故事发生在现代都市与古老妖界交织的平行世界。人类社会表面平静有序，实则自上古以来便与精怪妖物共存。多数人对超自然事物一无所知，仅少数传承者肩负着维系两界平衡的使命。</textarea>
+            
+            <h4 class="editable-text">世界分层</h4>
+            <input class="edit-input" data-key="worldview-h2" value="世界分层">
+            <div class="layer-box">
+              <div class="layer-item layer-human">
+                <div class="l-name editable-text">人间界</div>
+                <input class="edit-input" data-key="layer-human-name" value="人间界">
+                <div class="l-desc editable-text">现代都市 · 江城 · 普通人世界。老城区保留大量古建筑，是人妖边界模糊之地。核心地标：镇妖博物馆、江城大学。</div>
+                <textarea class="edit-textarea" data-key="layer-human-desc">现代都市 · 江城 · 普通人世界。老城区保留大量古建筑，是人妖边界模糊之地。核心地标：镇妖博物馆、江城大学。</textarea>
+              </div>
+              <div class="layer-arrow">▼ 封印之壁 · 缝隙散布 ▼</div>
+              <div class="layer-item layer-demon">
+                <div class="l-name editable-text">妖界</div>
+                <input class="edit-input" data-key="layer-demon-name" value="妖界">
+                <div class="l-desc editable-text">万妖之地。核心地标：万妖山、妖都、幽冥河。九尾狐族、龙族、狼族、羽族等妖族势力割据，群妖聚集，妖气冲天。</div>
+                <textarea class="edit-textarea" data-key="layer-demon-desc">万妖之地。核心地标：万妖山、妖都、幽冥河。九尾狐族、龙族、狼族、羽族等妖族势力割据，群妖聚集，妖气冲天。</textarea>
+              </div>
+              <div class="layer-arrow">▼ 修行者通道 ▼</div>
+              <div class="layer-item layer-cultivator">
+                <div class="l-name editable-text">修士界</div>
+                <input class="edit-input" data-key="layer-cultivator-name" value="修士界">
+                <div class="l-desc editable-text">隐匿于人间的修行者世界。宗门：天师府（符箓派领袖）、茅山派（法术派）、蜀山剑派（剑修至尊）、龙虎山（炼丹祖庭）、昆仑（隐世）。</div>
+                <textarea class="edit-textarea" data-key="layer-cultivator-desc">隐匿于人间的修行者世界。宗门：天师府（符箓派领袖）、茅山派（法术派）、蜀山剑派（剑修至尊）、龙虎山（炼丹祖庭）、昆仑（隐世）。</textarea>
+              </div>
+            </div>
+
+            <h4 class="editable-text">核心设定</h4>
+            <input class="edit-input" data-key="worldview-h3" value="核心设定">
+            <ul>
+              <li class="editable-text">妖物源于天地灵气与万物执念，自古便存在于世间，形态各异，善恶难辨</li>
+              <li class="editable-text">镇妖博物馆是官方认可的特殊机构，表面为文物展馆，实则负责收容、研究异常妖物</li>
+              <li class="editable-text">馆内藏品皆为有灵之物，每件文物背后都承载着一段尘封的往事与因果</li>
+              <li class="editable-text">时代变迁之下，古老传承逐渐式微，新的危机与秩序正在悄然酝酿</li>
+            </ul>
+
+            <h4 class="editable-text">势力划分</h4>
+            <input class="edit-input" data-key="worldview-h4" value="势力划分">
+            <ul>
+              <li class="editable-text">镇妖博物馆：中立守序，以收容、制衡为核心宗旨，不轻易灭杀妖物</li>
+              <li class="editable-text">玄门世家：传承古法的修行家族，手段各异，与博物馆既有合作亦有分歧</li>
+              <li class="editable-text">游离妖物：散居人间的精怪，或隐于市井，或伺机作乱，立场不定</li>
+              <li class="editable-text">官方特殊部门：知晓超自然存在，负责信息管控与事件收尾</li>
+            </ul>
+          </div>
+
+          <!-- 主要角色 -->
+          <div id="script-characters" class="setting-chapter">
+            <h3 class="editable-text">主要角色</h3>
+            <input class="edit-input" data-key="char-title" value="主要角色">
+            <div class="char-grid">
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'char1')">
+                  <div class="upload-hint"><span class="icon">👤</span>上传立绘</div>
+                </div>
+                <div class="cname editable-text">卫渊 <span class="rtag r-main">主角</span></div>
+                <div class="cinfo editable-text">考古系研究生，性格沉稳内敛，心思缜密，因一场意外卷入超自然事件，因缘际会进入镇妖博物馆工作。身负特殊血脉，对古物有超乎常人的感知力。</div>
+                <div class="ctags"><span>人族</span><span>馆员</span><span>卫氏血脉</span><span>冷静缜密</span></div>
+              </div>
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'char2')">
+                  <div class="upload-hint"><span class="icon">👤</span>上传立绘</div>
+                </div>
+                <div class="cname editable-text">馆长 <span class="rtag r-neutral">馆主</span></div>
+                <div class="cinfo editable-text">镇妖博物馆现任馆长，神秘莫测，实力深不可测，平日行事慵懒随性，关键时刻极为可靠。见证了数百年的岁月变迁。</div>
+                <div class="ctags"><span>人族</span><span>馆长</span><span>深不可测</span><span>亦正亦邪</span></div>
+              </div>
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'char3')">
+                  <div class="upload-hint"><span class="icon">👤</span>上传立绘</div>
+                </div>
+                <div class="cname editable-text">白芷 <span class="rtag r-ally">盟友</span></div>
+                <div class="cinfo editable-text">医药世家传人，精通古法医术与药性，性格外冷内热，常为博物馆提供丹药与医疗支援。</div>
+                <div class="ctags"><span>人族</span><span>医道世家</span><span>外冷内热</span></div>
+              </div>
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'char4')">
+                  <div class="upload-hint"><span class="icon">👤</span>上传立绘</div>
+                </div>
+                <div class="cname editable-text">胖子 <span class="rtag r-ally">队友</span></div>
+                <div class="cinfo editable-text">卫渊的发小，性格开朗活络，人脉广阔，负责世俗层面的打点与情报收集。</div>
+                <div class="ctags"><span>人族</span><span>情报通</span><span>乐观开朗</span></div>
+              </div>
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'char5')">
+                  <div class="upload-hint"><span class="icon">👤</span>上传立绘</div>
+                </div>
+                <div class="cname editable-text">青玄 <span class="rtag r-neutral">对手</span></div>
+                <div class="cinfo editable-text">玄门年轻一代翘楚，出身正统，行事恪守规矩，初期与主角有摩擦，后逐渐认可对方。</div>
+                <div class="ctags"><span>人族</span><span>玄门弟子</span><span>恪守规矩</span><span>傲娇</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 妖物图鉴 -->
+          <div id="script-monsters" class="setting-chapter">
+            <h3 class="editable-text">妖物图鉴</h3>
+            <input class="edit-input" data-key="monster-title" value="妖物图鉴">
+            
+            <h4 class="editable-text">善类 · 中立妖物</h4>
+            <input class="edit-input" data-key="monster-h1" value="善类 · 中立妖物">
+            <div class="char-grid">
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'monster1')">
+                  <div class="upload-hint"><span class="icon">👹</span>上传形象</div>
+                </div>
+                <div class="cname editable-text">书灵 <span class="rtag r-ally">善</span></div>
+                <div class="cinfo editable-text">生于古籍之中的灵体，学识渊博，性情温和，以文气为食，常居于博物馆藏书阁。</div>
+                <div class="ctags"><span>灵体</span><span>博学</span><span>温和</span></div>
+              </div>
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'monster2')">
+                  <div class="upload-hint"><span class="icon">👹</span>上传形象</div>
+                </div>
+                <div class="cname editable-text">灯妖 <span class="rtag r-ally">善</span></div>
+                <div class="cinfo editable-text">寄居古灯之内的精怪，守夜照明，不喜纷争，守护着博物馆夜间的安宁。</div>
+                <div class="ctags"><span>精怪</span><span>守夜</span><span>安静</span></div>
+              </div>
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'monster3')">
+                  <div class="upload-hint"><span class="icon">👹</span>上传形象</div>
+                </div>
+                <div class="cname editable-text">狐妖 <span class="rtag r-neutral">中立</span></div>
+                <div class="cinfo editable-text">修行千年的灵狐，聪慧狡黠，亦正亦邪，行事全凭本心，与博物馆有旧交。</div>
+                <div class="ctags"><span>妖族</span><span>九尾</span><span>狡黠</span><span>亦正亦邪</span></div>
+              </div>
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'monster4')">
+                  <div class="upload-hint"><span class="icon">👹</span>上传形象</div>
+                </div>
+                <div class="cname editable-text">山君 <span class="rtag r-neutral">中立</span></div>
+                <div class="cinfo editable-text">镇守一方山川的大妖，不问世事，仅护一方安宁，极少涉足人间纷争。</div>
+                <div class="ctags"><span>妖族</span><span>山神</span><span>隐世</span></div>
+              </div>
+            </div>
+
+            <h4 class="editable-text">恶类 · 凶邪妖物</h4>
+            <input class="edit-input" data-key="monster-h2" value="恶类 · 凶邪妖物">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>妖名</th><th>种类</th><th>危险等级</th><th>特性</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="editable-text">画皮鬼</td><td class="editable-text">邪物</td><td class="editable-text">★★★</td><td class="editable-text">披人皮而行于世间，以吞噬生人精气存活</td></tr>
+                  <tr><td class="editable-text">水魈</td><td class="editable-text">水妖</td><td class="editable-text">★★☆</td><td class="editable-text">生于阴寒水域，喜拖人入水，性情凶戾</td></tr>
+                  <tr><td class="editable-text">骨妖</td><td class="editable-text">邪物</td><td class="editable-text">★★★☆</td><td class="editable-text">以骸骨为躯，聚怨气成形，刀枪难入，畏纯阳之火</td></tr>
+                  <tr><td class="editable-text">穷奇</td><td class="editable-text">上古凶兽</td><td class="editable-text">★★★★★</td><td class="editable-text">封印于博物馆九层禁地，上古四凶之一，实力极强</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 法器道具 -->
+          <div id="script-artifacts" class="setting-chapter">
+            <h3 class="editable-text">法器道具</h3>
+            <input class="edit-input" data-key="artifact-title" value="法器道具">
+            
+            <h4 class="editable-text">镇馆之宝</h4>
+            <input class="edit-input" data-key="artifact-h1" value="镇馆之宝">
+            <div class="char-grid">
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'artifact1')">
+                  <div class="upload-hint"><span class="icon">🏺</span>上传图片</div>
+                </div>
+                <div class="cname editable-text">镇妖印 <span class="rtag r-main">至宝</span></div>
+                <div class="cinfo editable-text">博物馆传承信物，可镇压万妖，需对应血脉方可催动全力，是馆主身份的象征。</div>
+                <div class="ctags"><span>镇馆之宝</span><span>镇压万妖</span><span>血脉绑定</span></div>
+              </div>
+              <div class="char-card has-cover">
+                <div class="char-cover img-upload-box" onclick="uploadCharImg(this, 'artifact2')">
+                  <div class="upload-hint"><span class="icon">🏺</span>上传图片</div>
+                </div>
+                <div class="cname editable-text">归墟镜 <span class="rtag r-main">至宝</span></div>
+                <div class="cinfo editable-text">可照见本相与过往，能破虚妄幻术，亦能连通阴阳两界，威力莫测。</div>
+                <div class="ctags"><span>镇馆之宝</span><span>破幻</span><span>照见过往</span></div>
+              </div>
+            </div>
+
+            <h4 class="editable-text">常用法器</h4>
+            <input class="edit-input" data-key="artifact-h2" value="常用法器">
+            <ul>
+              <li class="editable-text"><b>朱砂符篆</b>：玄门通用法器，依画法不同可驱邪、镇宅、护身</li>
+              <li class="editable-text"><b>桃木剑</b>：克制阴邪之物的基础法器，年份越久威力越强</li>
+              <li class="editable-text"><b>墨玉牌</b>：佩戴可护身挡灾，蕴养日久能生灵性</li>
+              <li class="editable-text"><b>罗盘</b>：可探测妖气、定位风水节点，是寻妖探穴的必备之物</li>
+            </ul>
+
+            <h4 class="editable-text">馆藏奇物</h4>
+            <input class="edit-input" data-key="artifact-h3" value="馆藏奇物">
+            <ul>
+              <li class="editable-text"><b>春秋竹简</b>：记载上古秘闻，其上文字会随阅者心境变化</li>
+              <li class="editable-text"><b>旧琵琶</b>：前朝旧物，夜半常自鸣，闻者多陷入前尘幻梦</li>
+              <li class="editable-text"><b>青铜鼎</b>：商周古物，内蕴纯阳之火，可炼化邪祟</li>
+            </ul>
+          </div>
+
+          <!-- 主线剧情 -->
+          <div id="script-story" class="setting-chapter">
+            <h3 class="editable-text">主线剧情</h3>
+            <input class="edit-input" data-key="story-title" value="主线剧情">
+            <div class="plot-timeline">
+              <div class="plot-item">
+                <div class="pv editable-text">第一卷 · 入职</div>
+                <div class="ps editable-text">卫渊因毕业论文选题接触到神秘的老博物馆，接连遭遇怪事，意外觉醒血脉能力。在馆长引导下，他得知妖物存在的真相，半推半就地成为博物馆一员，开始接触光怪陆离的世界。</div>
+              </div>
+              <div class="plot-item">
+                <div class="pv editable-text">第二卷 · 入世</div>
+                <div class="ps editable-text">卫渊开始独立处理各类异常事件，从手足无措到逐渐得心应手。他结识玄门、世家、散妖等各方势力，也慢慢发现博物馆平静表象下，隐藏着诸多未解之谜与自身身世线索。</div>
+              </div>
+              <div class="plot-item">
+                <div class="pv editable-text">第三卷 · 迷局</div>
+                <div class="ps editable-text">一系列针对博物馆的阴谋接连浮现，上古封印松动、旧怨重现、各方势力暗流涌动。卫渊在危机中探寻真相，逐渐拼凑出千年前的大变故，以及镇妖博物馆真正的使命。</div>
+              </div>
+              <div class="plot-item">
+                <div class="pv editable-text">第四卷 · 变局</div>
+                <div class="ps editable-text">两界屏障持续弱化，大劫将至。卫渊继承馆主之位，联合各方势力，直面最终的危机与真相，重新定义人与妖的秩序。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 素材库页面 -->
+        <div id="drama-assets" class="setting-chapter">
+          <div class="asset-tabs">
+            <div class="asset-tab active" onclick="switchAssetTab('image')">🖼️ 图片素材</div>
+            <div class="asset-tab" onclick="switchAssetTab('video')">🎬 视频素材</div>
+            <div class="asset-tab" onclick="switchAssetTab('audio')">🎵 音频素材</div>
+          </div>
+          
+          <div class="upload-container" style="margin-bottom: 20px;">
+            <div class="upload-area" id="assetUploadArea" style="padding: 30px 20px;">
+              <div class="icon">📤</div>
+              <div class="text">点击或拖拽上传素材</div>
+              <div class="hint">支持 JPG/PNG/WEBP/MP4/MP3 · 自动分类保存</div>
+              <input type="file" id="assetFileInput" style="display:none" multiple accept="image/*,video/*,audio/*">
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-top:0;">素材列表</div>
+          <div class="asset-grid" id="assetGrid">
+            <div class="empty-tip">暂无素材，点击上方区域上传</div>
+          </div>
+        </div>
+
+        <!-- 风格引擎页面 -->
+        <div id="drama-style" class="setting-chapter">
+          <h3 style="margin-bottom: 20px;">选择漫剧美术风格</h3>
+          <div class="style-grid" id="styleGrid">
+            <div class="style-card s1 active" onclick="selectStyle(this, 'guofeng')">
+              <div class="style-preview">🏮</div>
+              <div class="style-info">
+                <div class="style-name">水墨国风</div>
+                <div class="style-desc">传统水墨晕染，东方古典韵味</div>
+              </div>
+            </div>
+            <div class="style-card s2" onclick="selectStyle(this, 'cyberpunk')">
+              <div class="style-preview">🌃</div>
+              <div class="style-info">
+                <div class="style-name">赛博朋克</div>
+                <div class="style-desc">霓虹光影，未来科技感</div>
+              </div>
+            </div>
+            <div class="style-card s3" onclick="selectStyle(this, 'dark')">
+              <div class="style-preview">🌑</div>
+              <div class="style-info">
+                <div class="style-name">暗黑悬疑</div>
+                <div class="style-desc">低饱和色调，惊悚氛围</div>
+              </div>
+            </div>
+            <div class="style-card s4" onclick="selectStyle(this, 'japanese')">
+              <div class="style-preview">🌸</div>
+              <div class="style-info">
+                <div class="style-name">日系动漫</div>
+                <div class="style-desc">经典日漫画风，清新明快</div>
+              </div>
+            </div>
+            <div class="style-card s5" onclick="selectStyle(this, 'magic')">
+              <div class="style-preview">✨</div>
+              <div class="style-info">
+                <div class="style-name">奇幻魔法</div>
+                <div class="style-desc">绚丽光效，西式魔幻世界</div>
+              </div>
+            </div>
+            <div class="style-card s6" onclick="selectStyle(this, 'retro')">
+              <div class="style-preview">📜</div>
+              <div class="style-info">
+                <div class="style-name">复古港漫</div>
+                <div class="style-desc">粗犷线条，90年代港漫风格</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top: 24px; text-align: center;">
+            <button class="btn-primary" onclick="applyStyle()">✅ 应用当前风格到剧本</button>
+          </div>
+        </div>
+
+        <!-- 批量渲染页面 -->
+        <div id="drama-render" class="setting-chapter">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="border: none; padding: 0; margin: 0;">渲染任务列表</h3>
+            <button class="btn-primary" onclick="newRenderTask()">➕ 新建渲染任务</button>
+          </div>
+          <div class="render-task-list" id="renderTaskList">
+            <div class="empty-tip" style="padding: 60px 20px;">暂无渲染任务，点击右上角新建</div>
+          </div>
+        </div>
+
+        <!-- AI助手面板 -->
+        <div class="ai-panel" id="aiPanel">
+          <div class="ai-panel-header">
+            <div class="ai-panel-title">🤖 AI创作助手</div>
+            <div class="ai-panel-close" onclick="toggleAIPanel()">✕</div>
+          </div>
+          <div class="ai-function-select">
+            <div class="ai-func-tag active" onclick="selectAIFunc(this, 'worldview')">生成世界观</div>
+            <div class="ai-func-tag" onclick="selectAIFunc(this, 'character')">扩充角色</div>
+            <div class="ai-func-tag" onclick="selectAIFunc(this, 'plot')">续写剧情</div>
+            <div class="ai-func-tag" onclick="selectAIFunc(this, 'polish')">润色文本</div>
+          </div>
+          <div class="ai-messages" id="aiMessages">
+            <div class="ai-msg bot">
+              你好！我是AI创作助手，可以帮你生成世界观、扩充角色、续写剧情、润色台词。请选择功能后输入需求~
+            </div>
+          </div>
+          <div class="ai-input-area">
+            <textarea id="aiInput" placeholder="输入你的创作需求，比如：增加一个神秘的反派角色"></textarea>
+            <button class="ai-send-btn" onclick="sendAIMessage()">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 其他工具页 -->
+<div class="sub-page" id="page-other">
+  <div class="page-header">
+    <div class="page-title">其他工具</div>
+    <div class="page-subtitle">扩展功能 · 辅助工具 · 系统设置</div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">🔧 工具列表</div>
+    <div class="tool-grid">
+      <div class="tool-card" onclick="comingSoon()">
+        <div class="tool-name">格式转换工具</div>
+        <div class="tool-desc">将设定集、剧本、分镜文件在 JSON / HTML / TXT 格式间互相转换，适配不同创作场景。</div>
+        <div class="tool-status dev">开发中</div>
+      </div>
+      <div class="tool-card" onclick="comingSoon()">
+        <div class="tool-name">角色立绘生成器</div>
+        <div class="tool-desc">基于设定集角色信息，一键生成符合风格的 AI 绘画 Prompt，支持多模型适配。</div>
+        <div class="tool-status dev">开发中</div>
+      </div>
+      <div class="tool-card" onclick="comingSoon()">
+        <div class="tool-name">台词润色工具</div>
+        <div class="tool-desc">AI 辅助润色漫剧台词，优化语气、节奏、风格，贴合角色人设与剧情场景。</div>
+        <div class="tool-status coming">即将上线</div>
+      </div>
+      <div class="tool-card" onclick="comingSoon()">
+        <div class="tool-name">数据备份/恢复</div>
+        <div class="tool-desc">将创作数据备份到本地或云端，防止意外丢失，支持一键恢复历史版本。</div>
+        <div class="tool-status coming">即将上线</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 全局配置 ==========
+const STORAGE_KEY = 'drama_projects';
+const STORAGE_CURRENT = 'current_project_id';
+const ASSET_KEY = 'drama_assets';
+const ASSET_IMG_KEY = 'drama_asset_blobs';
+const NAV_STATE_KEY = 'icebang_nav_state';
+
+// ========== 导航状态持久化（刷新后回到当前位置） ==========
+function saveNavState() {
+  try {
+    localStorage.setItem(NAV_STATE_KEY, JSON.stringify({
+      pageLevel: pageLevel,
+      subPage: currentSubPage,
+      time: Date.now()
+    }));
+  } catch(e) {}
+}
+
+function restoreNavState() {
+  try {
+    const saved = localStorage.getItem(NAV_STATE_KEY);
+    if (!saved) return false;
+    const state = JSON.parse(saved);
+    if (!state.pageLevel || state.pageLevel < 1) return false;
+    // 只恢复 1 小时内的状态
+    if (Date.now() - state.time > 3600000) return false;
+    
+    if (state.pageLevel >= 1 && state.subPage) {
+      // 直接进入子页面
+      pageLevel = 1;
+      modulesWrap.classList.add('show');
+      backBtn.classList.add('show');
+      heroScreen.style.display = 'none';
+      heroScreen.style.opacity = 0;
+      
+      setTimeout(() => {
+        openSubPage(state.subPage);
+      }, 100);
+      return true;
+    } else if (state.pageLevel >= 1) {
+      pageLevel = 1;
+      modulesWrap.classList.add('show');
+      backBtn.classList.add('show');
+      heroScreen.style.display = 'none';
+      heroScreen.style.opacity = 0;
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// ========== IndexedDB 二进制存储（替代 localStorage base64） ==========
+function openImageDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('ICEBang_Images', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('images')) {
+        db.createObjectStore('images', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function saveImageBlob(id, blob) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').put({ id, blob });
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+
+async function getImageBlob(id) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('images', 'readonly');
+    const req = tx.objectStore('images').get(id);
+    req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function deleteImageBlob(id) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+
+function imageKey(projId, imgKey) { return `${projId}_${imgKey}`; }
+
+// 从 project.images 键名加载所有 blob 并创建 ObjectURL（页面初始化时调用）
+async function loadProjectImages(project) {
+  if (!project.images) return;
+  const keys = Object.keys(project.images);
+  for (const key of keys) {
+    const stored = project.images[key]; // 存的是 { name, type } 元数据
+    if (stored && stored.id) {
+      const blob = await getImageBlob(stored.id);
+      if (blob) {
+        stored.url = URL.createObjectURL(blob);
+      }
+    }
+  }
+}
+
+// 保存图片文件到 IndexedDB，返回元数据引用
+async function storeProjectImage(projId, imgKey, file) {
+  const id = imageKey(projId, imgKey);
+  await saveImageBlob(id, file);
+  return { id, name: file.name, type: file.type, size: file.size };
+}
+
+let pageLevel = 0;
+let currentSubPage = null;
+let isEditMode = false;
+let currentAIFunc = 'worldview';
+let projects = [];
+let currentProjectId = null;
+let assets = { image: [], video: [], audio: [] };
+let currentAssetTab = 'image';
+let currentStyle = 'guofeng';
+let renderTasks = [];
+
+// ========== 背景音乐控制 ==========
+const bgMusic = document.getElementById('bgMusic');
+let audioMuted = false;
+bgMusic.volume = 0.12; // 默认音量 12%
+
+// 首次点击页面时播放音乐（浏览器自动播放策略）
+document.addEventListener('click', function startBGM() {
+  if (bgMusic.paused) {
+    bgMusic.play().catch(() => {});
+  }
+}, { once: true });
+
+function toggleAudio() {
+  audioMuted = !audioMuted;
+  bgMusic.muted = audioMuted;
+  document.getElementById('audioControl').textContent = audioMuted ? '🔇' : '🔊';
+}
+
+// ========== 全局键盘快捷键 ==========
+document.addEventListener('keydown', function(e) {
+  // Ctrl+S → 保存当前项目
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    if (typeof saveCurrentProject === 'function') {
+      saveCurrentProject();
+    }
+  }
+  // Escape → 关闭 AI 面板 / 下拉菜单
+  if (e.key === 'Escape') {
+    const aiPanel = document.getElementById('aiPanel');
+    if (aiPanel && aiPanel.classList.contains('open')) {
+      aiPanel.classList.remove('open');
+      document.getElementById('dramaContent').classList.remove('ai-open');
+    }
+    const dropdown = document.getElementById('projectDropdown');
+    if (dropdown && dropdown.classList.contains('show')) {
+      dropdown.classList.remove('show');
+    }
+  }
+  // Ctrl+E → 切换编辑/预览
+  if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+    e.preventDefault();
+    if (typeof setEditMode === 'function') {
+      setEditMode(!isEditMode);
+    }
+  }
+});
+
+// ========== 项目数据导出/导入 ==========
+function exportProjectData() {
+  const project = projects.find(p => p.id === currentProjectId);
+  if (!project) { showToast('⚠️ 无项目可导出'); return; }
+  
+  saveCurrentProjectData();
+  
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    projects: projects.map(p => ({
+      id: p.id,
+      name: p.name,
+      style: p.style,
+      data: p.data,
+      images: p.images ? Object.keys(p.images).reduce((acc, key) => {
+        const img = p.images[key];
+        // 只导出元数据引用，不导出 blob（太大）
+        if (img && img.id) acc[key] = { id: img.id, name: img.name, type: img.type, size: img.size };
+        return acc;
+      }, {}) : {}
+    })),
+    currentProjectId: currentProjectId
+  };
+  
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ICE_Bang_项目导出_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ 项目数据已导出');
+}
+
+function importProjectData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      
+      if (!payload.version || !payload.projects || !Array.isArray(payload.projects)) {
+        showToast('⚠️ 文件格式不正确，请选择正确导出的 JSON 文件');
+        return;
+      }
+      
+      if (payload.projects.length === 0) {
+        showToast('⚠️ 文件中没有项目数据');
+        return;
+      }
+      
+      // 合并导入（不覆盖现有的，追加新项目）
+      for (const imp of payload.projects) {
+        const exists = projects.find(p => p.id === imp.id);
+        if (exists) {
+          // ID 冲突：生成新 ID
+          imp.id = imp.id + '_imported_' + Date.now();
+        }
+        if (!imp.images) imp.images = {};
+        projects.push(imp);
+      }
+      
+      saveAllProjects();
+      renderProjectList();
+      if (payload.currentProjectId) {
+        const target = projects.find(p => p.id === payload.currentProjectId || p.id.startsWith(payload.currentProjectId));
+        if (target) {
+          switchProject(target.id);
+        }
+      }
+      showToast(`✅ 已导入 ${payload.projects.length} 个项目`);
+    } catch(err) {
+      showToast('⚠️ 导入失败：' + err.message);
+    }
+  };
+  input.click();
+}
+
+// ========== 默认剧本模板 ==========
+const defaultProject = {
+  id: 'zhenyao',
+  name: '🏛️ 镇妖博物馆',
+  style: 'guofeng',
+  data: {},
+  images: {}
+};
+
+const emptyProjectTemplate = {
+  'worldview-title': '世界观设定',
+  'worldview-h1': '时代背景',
+  'worldview-p1': '在此填写你的故事时代背景...',
+  'worldview-h2': '世界设定',
+  'layer-human-name': '主世界',
+  'layer-human-desc': '在此描述主世界的地理、社会、文明...',
+  'layer-demon-name': '异世界',
+  'layer-demon-desc': '在此描述异世界的规则、种族、势力...',
+  'layer-cultivator-name': '隐藏界',
+  'layer-cultivator-desc': '在此描述隐藏势力、特殊能力体系...',
+  'worldview-h3': '核心规则',
+  'worldview-h4': '势力划分',
+  'char-title': '主要角色',
+  'monster-title': '怪物/敌人图鉴',
+  'monster-h1': '中立生物',
+  'monster-h2': '敌对生物',
+  'artifact-title': '道具/装备',
+  'artifact-h1': '核心宝物',
+  'artifact-h2': '常用装备',
+  'artifact-h3': '特殊物品',
+  'story-title': '主线剧情'
+};
+
+// ========== 初始化项目系统 ==========
+async function initProjects() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      projects = JSON.parse(saved);
+    } else {
+      const defaultData = {};
+      document.querySelectorAll('#drama-script .edit-input, #drama-script .edit-textarea').forEach(input => {
+        const key = input.dataset.key;
+        if (key) defaultData[key] = input.value;
+      });
+      defaultProject.data = defaultData;
+      projects = [JSON.parse(JSON.stringify(defaultProject))];
+    }
+    
+    // 从 IndexedDB 恢复所有项目图片的 ObjectURL
+    for (const p of projects) {
+      await loadProjectImages(p);
+    }
+    
+    const savedId = localStorage.getItem(STORAGE_CURRENT);
+    currentProjectId = savedId && projects.find(p => p.id === savedId) 
+      ? savedId 
+      : projects[0].id;
+    
+    renderProjectList();
+    loadProjectData(currentProjectId);
+  } catch(e) {
+    console.error('项目初始化失败', e);
+  }
+}
+
+// 渲染项目下拉列表
+function renderProjectList() {
+  const listEl = document.getElementById('projectList');
+  listEl.innerHTML = '';
+  
+  projects.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'project-item' + (p.id === currentProjectId ? ' active' : '');
+    item.innerHTML = `
+      <span class="proj-name">${p.name}</span>
+      ${projects.length > 1 ? `<span class="del-btn">删除</span>` : ''}
+    `;
+    
+    item.querySelector('.proj-name').addEventListener('click', (e) => {
+      e.stopPropagation();
+      switchProject(p.id);
+    });
+    
+    if (projects.length > 1) {
+      item.querySelector('.del-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteProject(p.id);
+      });
+    }
+    
+    listEl.appendChild(item);
+  });
+  
+  const current = projects.find(p => p.id === currentProjectId);
+  if (current) {
+    document.getElementById('currentProjectName').textContent = current.name;
+  }
+}
+
+// 切换项目
+function switchProject(id) {
+  if (id === currentProjectId) {
+    toggleProjectDropdown();
+    return;
+  }
+  
+  saveCurrentProjectData();
+  
+  currentProjectId = id;
+  localStorage.setItem(STORAGE_CURRENT, id);
+  
+  loadProjectData(id);
+  renderProjectList();
+  toggleProjectDropdown();
+  showToast('✅ 已切换剧本项目');
+}
+
+// 加载项目数据
+function loadProjectData(id) {
+  const project = projects.find(p => p.id === id);
+  if (!project) return;
+  
+  document.querySelectorAll('#drama-script .edit-input, #drama-script .edit-textarea').forEach(input => {
+    const key = input.dataset.key;
+    if (key && project.data[key] !== undefined) {
+      input.value = project.data[key];
+    } else if (key && emptyProjectTemplate[key] !== undefined) {
+      input.value = emptyProjectTemplate[key];
+    }
+  });
+
+  // 从 images 元数据中的 ObjectURL 显示图片（由 loadProjectImages 预先填充）
+  if (project.images) {
+    const worldview = project.images.worldviewCover;
+    if (worldview && worldview.url) {
+      const box = document.getElementById('worldviewCover');
+      const isVideo = (worldview.type || '').startsWith('video');
+      box.innerHTML = isVideo
+        ? `<video src="${worldview.url}" muted controls></video>`
+        : `<img src="${worldview.url}" alt="封面">`;
+    }
+  }
+  
+  syncEditToPreview();
+}
+
+// 新建项目
+function newProject(event) {
+  if (event) event.stopPropagation();
+  
+  const name = prompt('请输入新剧本项目名称：', '新剧本项目');
+  if (!name || !name.trim()) return;
+  
+  const id = 'proj_' + Date.now();
+  const newProj = {
+    id: id,
+    name: name.trim(),
+    style: 'guofeng',
+    data: JSON.parse(JSON.stringify(emptyProjectTemplate)),
+    images: {}
+  };
+  
+  saveCurrentProjectData();
+  
+  projects.push(newProj);
+  currentProjectId = id;
+  localStorage.setItem(STORAGE_CURRENT, id);
+  saveAllProjects();
+  
+  loadProjectData(id);
+  renderProjectList();
+  
+  // 关闭下拉菜单
+  document.getElementById('projectDropdown').classList.remove('show');
+  
+  showToast('✅ 已创建新项目');
+}
+
+// 删除项目
+function deleteProject(id) {
+  if (projects.length <= 1) {
+    showToast('⚠️ 至少保留一个项目');
+    return;
+  }
+  
+  if (!confirm('确定删除这个剧本项目吗？删除后无法恢复。')) return;
+  
+  projects = projects.filter(p => p.id !== id);
+  
+  if (currentProjectId === id) {
+    currentProjectId = projects[0].id;
+    localStorage.setItem(STORAGE_CURRENT, currentProjectId);
+    loadProjectData(currentProjectId);
+  }
+  
+  saveAllProjects();
+  renderProjectList();
+  showToast('🗑️ 已删除项目');
+}
+
+// 保存所有项目
+function saveAllProjects() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+}
+
+// 保存当前项目数据
+function saveCurrentProjectData() {
+  const project = projects.find(p => p.id === currentProjectId);
+  if (!project) return;
+  
+  document.querySelectorAll('#drama-script .edit-input, #drama-script .edit-textarea').forEach(input => {
+    const key = input.dataset.key;
+    if (key) project.data[key] = input.value;
+  });
+}
+
+function saveCurrentProject() {
+  saveCurrentProjectData();
+  saveAllProjects();
+  showToast('✅ 已保存到本地');
+}
+
+// 项目下拉菜单控制
+function toggleProjectDropdown() {
+  document.getElementById('projectDropdown').classList.toggle('show');
+}
+
+// 点击外部关闭下拉
+document.addEventListener('click', function(e) {
+  const dropdown = document.getElementById('projectDropdown');
+  const selector = document.getElementById('projectSelector');
+  if (dropdown && !selector.contains(e.target) && !dropdown.contains(e.target)) {
+    dropdown.classList.remove('show');
+  }
+});
+
+// ========== 标题粒子消散 ==========
+const titleCanvas = document.getElementById('title-particles-canvas');
+const titleCtx = titleCanvas.getContext('2d');
+const iceTitle = document.getElementById('iceTitle');
+let titleParticles = [];
+let titleAnimId = null;
+
+function initTitleCanvas() {
+  titleCanvas.width = window.innerWidth;
+  titleCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', initTitleCanvas);
+initTitleCanvas();
+
+function startTitleDissolve() {
+  titleParticles = [];
+  const titleRect = iceTitle.getBoundingClientRect();
+  const off = document.createElement('canvas');
+  const octx = off.getContext('2d');
+  off.width = titleRect.width;
+  off.height = titleRect.height;
+  
+  const style = getComputedStyle(iceTitle);
+  octx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  
+  const grad = octx.createLinearGradient(0, 0, off.width, 0);
+  grad.addColorStop(0, '#c8b478');
+  grad.addColorStop(0.5, '#e8d48a');
+  grad.addColorStop(1, '#22d3ee');
+  octx.fillStyle = grad;
+  octx.fillText('ICE Bang!', off.width/2, off.height/2);
+
+  const imgData = octx.getImageData(0, 0, off.width, off.height).data;
+  const gap = window.innerWidth < 768 ? 4 : 3;
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+
+  for (let y = 0; y < off.height; y += gap) {
+    for (let x = 0; x < off.width; x += gap) {
+      const idx = (y * off.width + x) * 4;
+      if (imgData[idx+3] > 10) {
+        const ox = titleRect.left + x;
+        const oy = titleRect.top + y;
+        const ang = Math.atan2(oy - cy, ox - cx);
+        const sp = 1.2 + Math.random() * 2.8;
+        titleParticles.push({
+          ox, oy, x: ox, y: oy,
+          vx: Math.cos(ang)*sp + (Math.random()-0.5)*1.5,
+          vy: Math.sin(ang)*sp + (Math.random()-0.5)*1.5,
+          size: 1 + Math.random()*1.8,
+          r: imgData[idx], g: imgData[idx+1], b: imgData[idx+2],
+          a: imgData[idx+3]/255
+        });
+      }
+    }
+  }
+
+  iceTitle.style.opacity = 0;
+  titleCanvas.style.opacity = 1;
+  
+  let start = 0;
+  function anim(t) {
+    if (!start) start = t;
+    const p = Math.min(1, (t - start) / 2200);
+    const ease = 1 - Math.pow(1 - p, 2.5);
+    
+    titleCtx.clearRect(0, 0, titleCanvas.width, titleCanvas.height);
+    const scale = 1 + ease * 2.5;
+    
+    for (const pt of titleParticles) {
+      const dx = pt.ox - cx;
+      const dy = pt.oy - cy;
+      pt.x = cx + dx * scale + pt.vx * ease * 220;
+      pt.y = cy + dy * scale + pt.vy * ease * 220;
+      const alpha = pt.a * (1 - p);
+      if (alpha <= 0) continue;
+      
+      titleCtx.beginPath();
+      titleCtx.arc(pt.x, pt.y, pt.size*(1+ease*1.2), 0, Math.PI*2);
+      titleCtx.fillStyle = `rgba(${pt.r},${pt.g},${pt.b},${alpha})`;
+      titleCtx.fill();
+    }
+    
+    if (p < 1) titleAnimId = requestAnimationFrame(anim);
+    else titleCanvas.style.opacity = 0;
+  }
+  titleAnimId = requestAnimationFrame(anim);
+}
+
+function resetTitleDissolve() {
+  if (titleAnimId) cancelAnimationFrame(titleAnimId);
+  titleCtx.clearRect(0, 0, titleCanvas.width, titleCanvas.height);
+  titleCanvas.style.opacity = 0;
+  iceTitle.style.opacity = '';
+}
+
+// ========== 银河背景动效 ==========
+const canvas = document.getElementById('galaxy-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, bgGradient;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  bgGradient = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*0.7);
+  bgGradient.addColorStop(0, '#0a0818');
+  bgGradient.addColorStop(0.3, '#080614');
+  bgGradient.addColorStop(0.6, '#04030c');
+  bgGradient.addColorStop(1, '#010105');
+}
+window.addEventListener('resize', resize);
+resize();
+
+const stars = [];
+const starCount = document.hidden ? 50 : (window.innerWidth < 768 ? 150 : 400);
+
+function initStars() {
+  for (let i = 0; i < starCount; i++) {
+    const dist = Math.pow(Math.random(), 1.3);
+    const angle = Math.random() * Math.PI * 2;
+    const armIdx = Math.floor(Math.random() * 4);
+    const armAng = (armIdx / 4) * Math.PI * 2;
+    const spAng = angle + dist * 7;
+    const off = (Math.random() - 0.5) * 0.6 * (dist + 0.3);
+    
+    stars.push({
+      x: dist * Math.cos(spAng + armAng) + off * Math.cos(spAng + Math.PI/2),
+      y: dist * Math.sin(spAng + armAng) + off * Math.sin(spAng + Math.PI/2),
+      r: 0.2 + Math.random() * 1.0,
+      rR: 0.8 + Math.random() * 0.2,
+      gG: 0.7 + Math.random() * 0.2,
+      bB: 0.5 + Math.random() * 0.2,
+      bA: 0.2 + Math.random() * 0.5,
+      tS: 0.003 + Math.random() * 0.02,
+      pH: Math.random() * Math.PI * 2
+    });
+  }
+}
+initStars();
+
+let zoomFactor = 1;
+let _galaxyPaused = false;
+
+function render(timestamp) {
+  if (_galaxyPaused) return;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = bgGradient;
+  ctx.fillRect(0, 0, W, H);
+
+  const sc = Math.min(W, H) * 0.38 * zoomFactor;
+  const cx = W/2, cy = H/2;
+
+  for (const s of stars) {
+    const sx = cx + s.x * sc;
+    const sy = cy + s.y * sc;
+    const tw = s.bA + Math.sin((timestamp/1000)*s.tS + s.pH) * 0.1;
+    const a = Math.max(0, Math.min(1, tw));
+    if (a < 0.02) continue;
+
+    ctx.beginPath();
+    ctx.arc(sx, sy, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${Math.floor(s.rR*255)},${Math.floor(s.gG*255)},${Math.floor(s.bB*255)},${a})`;
+    ctx.fill();
+  }
+
+  requestAnimationFrame(render);
+}
+// 暂停/恢复绘制的第一个帧（电池优化）
+let _galaxyFrame = null;
+requestAnimationFrame(render);
+_galaxyFrame = true;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    _galaxyPaused = true;
+    if (_galaxyFrame) { cancelAnimationFrame(_galaxyFrame); _galaxyFrame = null; }
+  } else {
+    _galaxyPaused = false;
+    _galaxyFrame = requestAnimationFrame(render);
+  }
+});
+
+// ========== 页面切换 ==========
+const heroScreen = document.getElementById('heroScreen');
+const modulesWrap = document.getElementById('modulesWrap');
+const backBtn = document.getElementById('backBtn');
+
+// 尝试恢复上次导航状态（刷新后回到原来位置）
+const navRestored = restoreNavState();
+
+heroScreen.addEventListener('click', function() {
+  if (pageLevel !== 0 || navRestored) return;
+  pageLevel = 1;
+  
+  startTitleDissolve();
+  zoomFactor = 8;
+  document.querySelector('.ice-sub').style.opacity = 0;
+  document.querySelector('.hint').style.opacity = 0;
+  
+  setTimeout(() => {
+    heroScreen.style.opacity = 0;
+    setTimeout(() => { heroScreen.style.display = 'none'; }, 500);
+  }, 800);
+  
+  setTimeout(() => {
+    modulesWrap.classList.add('show');
+    backBtn.classList.add('show');
+  }, 1000);
+});
+
+function openSubPage(name) {
+  if (pageLevel !== 1) return;
+  
+  // 暂停银河动画（用户看不到就不需要跑）
+  _galaxyPaused = true;
+  
+  // 1. 卡片点击反馈
+  const activeCard = event && event.currentTarget;
+  if (activeCard) activeCard.classList.add('clicked');
+  
+  // 2. 延迟后模块退场（缩放 + 淡出）
+  setTimeout(() => {
+    modulesWrap.classList.remove('show');
+    modulesWrap.style.transform = 'scale(0.93)';
+  }, 180);
+  
+  // 3. 中间加一段"空场"停顿后子页面缓进
+  setTimeout(() => {
+    pageLevel = 2;
+    currentSubPage = name;
+    saveNavState();
+    const page = document.getElementById(`page-${name}`);
+    page.classList.add('show');
+    if (name === 'drama') {
+      initProjects();
+      initAssets();
+    } else if (name === 'portfolio') {
+      initPortfolio();
+    }
+  }, 550);
+}
+
+function goBack() {
+  if (pageLevel === 2) {
+    document.getElementById('aiPanel').classList.remove('open');
+    document.getElementById('dramaContent').classList.remove('ai-open');
+    
+    // 子页面缩出 → 模块页恢复
+    const page = document.getElementById(`page-${currentSubPage}`);
+    page.classList.add('exiting');
+    // exiting 类 + show 类 → CSS 触发缩出动画 (0.35s)
+    
+    setTimeout(() => {
+      page.classList.remove('show', 'exiting');
+      currentSubPage = null;
+      modulesWrap.style.transform = '';
+      // 清除卡片点击残留状态
+      document.querySelectorAll('.mod-card.clicked').forEach(c => c.classList.remove('clicked'));
+      pageLevel = 1;
+      _galaxyPaused = false; // 回到模块页，恢复银河
+      saveNavState();
+      modulesWrap.classList.add('show');
+    }, 420);
+  } else if (pageLevel === 1) {
+    pageLevel = 0;
+    _galaxyPaused = false;
+    localStorage.removeItem(NAV_STATE_KEY);
+    modulesWrap.classList.remove('show');
+    backBtn.classList.remove('show');
+    heroScreen.style.display = '';
+    setTimeout(() => {
+      heroScreen.style.opacity = 1;
+      document.querySelector('.ice-sub').style.opacity = '';
+      document.querySelector('.hint').style.opacity = '';
+      zoomFactor = 1;
+      resetTitleDissolve();
+    }, 100);
+  }
+}
+
+// ========== 标签切换 ==========
+function switchDramaTab(name) {
+  document.querySelectorAll('.drama-sidebar .sidebar-menu-item').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  document.querySelectorAll('#dramaContent > .setting-chapter').forEach(el => el.classList.remove('active'));
+  document.getElementById(`drama-${name}`).classList.add('active');
+}
+
+function switchScriptTab(name) {
+  document.querySelectorAll('.script-subnav-item').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  document.querySelectorAll('#drama-script .setting-chapter').forEach(el => el.classList.remove('active'));
+  document.getElementById(`script-${name}`).classList.add('active');
+}
+
+// ========== 编辑模式 ==========
+function setEditMode(enable) {
+  isEditMode = enable;
+  const content = document.getElementById('drama-script');
+  
+  if (enable) {
+    content.classList.add('edit-mode');
+    document.getElementById('btn-edit').classList.add('active');
+    document.getElementById('btn-preview').classList.remove('active');
+  } else {
+    syncEditToPreview();
+    content.classList.remove('edit-mode');
+    document.getElementById('btn-preview').classList.add('active');
+    document.getElementById('btn-edit').classList.remove('active');
+  }
+}
+
+function syncEditToPreview() {
+  document.querySelectorAll('.edit-input, .edit-textarea').forEach(input => {
+    const preview = input.previousElementSibling;
+    if (preview && preview.classList.contains('editable-text')) {
+      preview.textContent = input.value;
+    }
+  });
+}
+
+// ========== AI助手 ==========
+function toggleAIPanel() {
+  const panel = document.getElementById('aiPanel');
+  const content = document.getElementById('dramaContent');
+  const isOpen = panel.classList.toggle('open');
+  content.classList.toggle('ai-open', isOpen);
+}
+
+function selectAIFunc(el, func) {
+  currentAIFunc = func;
+  document.querySelectorAll('.ai-func-tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  
+  const input = document.getElementById('aiInput');
+  const placeholders = {
+    worldview: '比如：构建一个赛博朋克风格的修仙世界观',
+    character: '比如：增加一个亦正亦邪的神秘女配角',
+    plot: '比如：续写第三卷之后的剧情，加入反转',
+    polish: '比如：润色这段剧情，增加悬疑氛围'
+  };
+  input.placeholder = placeholders[func] || '输入你的创作需求...';
+}
+
+function sendAIMessage() {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  const msgBox = document.getElementById('aiMessages');
+  
+  const userMsg = document.createElement('div');
+  userMsg.className = 'ai-msg user';
+  userMsg.textContent = text;
+  msgBox.appendChild(userMsg);
+  
+  input.value = '';
+  
+  const loadingMsg = document.createElement('div');
+  loadingMsg.className = 'ai-msg bot';
+  loadingMsg.innerHTML = '<span>思考中...</span>';
+  msgBox.appendChild(loadingMsg);
+  msgBox.scrollTop = msgBox.scrollHeight;
+  
+  setTimeout(() => {
+    loadingMsg.remove();
+    
+    const botMsg = document.createElement('div');
+    botMsg.className = 'ai-msg bot';
+    
+    const replies = {
+      worldview: `为你生成的世界观设定方向：\n\n1. 核心冲突：科技与修仙的对立融合，大企业掌控灵气资源\n2. 世界分层：地表霓虹都市、地下贫民窟、浮空仙门岛\n3. 力量体系：电子符箓、义体筑基、数据金丹\n4. 核心矛盾：旧修仙世家与新科技巨头的资源战争\n\n可以直接点击插入到世界观设定中继续修改~`,
+      character: `为你设计的新角色：\n\n【姓名】墨璃\n【身份】黑市情报贩子 / 前玄门弟子\n【性格】狡黠市侩，黑白通吃，内心有底线\n【能力】精通易容、追踪、禁制破解\n【背景】因师门冤案被逐，游走于各方势力之间，掌握大量秘辛\n【与主角关系】亦敌亦友，交易合作中逐渐产生羁绊\n\n可插入到角色板块继续完善~`,
+      plot: `剧情续写建议：\n\n第三卷末尾可加入反转：馆长并非表面那般中立，他隐瞒了千年前大战的真相。卫渊在破解归墟镜秘密时，发现自己的血脉竟与当年的叛乱者有关。同时妖界大军压境，内忧外患之下，他必须在信任与真相之间做出抉择...\n\n可插入到剧情板块继续扩展~`,
+      polish: `润色后的文本风格建议：\n\n增加环境氛围描写，用光影、声音、气味烘托悬疑感；放慢节奏，通过细节暗示危机，而非直接说明；加入主角的心理活动和生理反应，强化代入感；结尾留钩子，用一个反常的细节引出后续悬念。\n\n你可以选中要润色的文本后告诉我~`
+    };
+    
+    botMsg.innerHTML = (replies[currentAIFunc] || '好的，我已经收到你的需求啦~').replace(/\n/g, '<br>') 
+      + '<br><span class="insert-btn" onclick="insertAIText(this)">插入到当前编辑项</span>';
+    
+    msgBox.appendChild(botMsg);
+    msgBox.scrollTop = msgBox.scrollHeight;
+  }, 1200);
+}
+
+function insertAIText(btnEl) {
+  const text = btnEl.parentElement.innerText.replace('插入到当前编辑项', '').trim();
+  
+  const activeChapter = document.querySelector('#drama-script .setting-chapter.active');
+  if (!activeChapter) return;
+  
+  const firstTextarea = activeChapter.querySelector('.edit-textarea');
+  if (firstTextarea) {
+    firstTextarea.value += '\n\n' + text;
+    if (isEditMode) syncEditToPreview();
+    showToast('✅ 已插入文本');
+  } else {
+    showToast('⚠️ 请先开启编辑模式');
+  }
+}
+
+document.getElementById('aiInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendAIMessage();
+  }
+});
+
+// ========== 3D 作品集（模型 + 贴图） ==========
+const PORTFOLIO_KEY = 'portfolio_assets';
+let portfolioModels = [];
+let portfolioTextures = [];
+let portfolioTab = 'model';
+
+// 初始化
+async function initPortfolio() {
+  try {
+    const saved = localStorage.getItem(PORTFOLIO_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      portfolioModels = data.models || [];
+      portfolioTextures = data.textures || [];
+    }
+  } catch(e) {}
+  renderModelGrid();
+  renderTextureGrid();
+}
+
+function savePortfolio() {
+  const clean = {
+    models: portfolioModels.map(m => {
+      const tex = m.textures || {};
+      // 兼容旧版 textureId → 迁移到 textures.color
+      if (m.textureId && !tex.color) tex.color = { blobId: m.textureId };
+      return {
+        blobId: m.blobId, name: m.name, ext: m.ext, size: m.size, time: m.time,
+        thumbUrl: m.thumbUrl || null,
+        textures: tex,
+        textureParams: m.textureParams || null
+      };
+    }),
+    textures: portfolioTextures.map(t => ({ blobId: t.blobId, name: t.name, ext: t.ext, size: t.size, time: t.time }))
+  };
+  localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(clean));
+}
+
+function switchPortfolioTab(tab) {
+  portfolioTab = tab;
+  document.querySelectorAll('.upload-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  const hint = document.getElementById('portfolioUploadHint');
+  if (tab === 'model') hint.textContent = '支持 .glb / .obj / .fbx / .stl';
+  else if (tab === 'texture') hint.textContent = '支持 .png / .jpg / .tga';
+  else hint.textContent = '所有格式均可上传';
+}
+
+// 上传事件绑定
+const portfolioUploadArea = document.getElementById('portfolioUploadArea');
+const portfolioFileInput = document.getElementById('portfolioFileInput');
+
+portfolioUploadArea.addEventListener('click', () => portfolioFileInput.click());
+portfolioFileInput.addEventListener('change', e => handlePortfolioUpload(Array.from(e.target.files)));
+
+portfolioUploadArea.addEventListener('dragover', e => {
+  e.preventDefault();
+  portfolioUploadArea.classList.add('drag-over');
+});
+portfolioUploadArea.addEventListener('dragleave', () => portfolioUploadArea.classList.remove('drag-over'));
+portfolioUploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  portfolioUploadArea.classList.remove('drag-over');
+  handlePortfolioUpload(Array.from(e.dataTransfer.files));
+});
+
+async function handlePortfolioUpload(files) {
+  for (const file of files) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isModel = ['glb','gltf','obj','fbx','stl'].includes(ext);
+    const isTexture = ['png','jpg','jpeg','tga'].includes(ext);
+    if (!isModel && !isTexture) {
+      showToast(`⚠️ 不支持 .${ext} 格式`);
+      continue;
+    }
+    
+    const blobId = 'pf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    await saveImageBlob(blobId, file);
+    const url = URL.createObjectURL(file);
+    const item = { blobId, name: file.name, ext, size: file.size, time: Date.now(), url };
+    
+    if (isModel) {
+      portfolioModels.push(item);
+      renderModelGrid();
+    } else {
+      portfolioTextures.push(item);
+      renderTextureGrid();
+    }
+    savePortfolio();
+    showToast(`✅ 已上传 ${file.name}`);
+  }
+}
+
+function renderModelGrid() {
+  const grid = document.getElementById('modelGrid');
+  if (portfolioModels.length === 0) {
+    grid.innerHTML = '<div class="empty-tip">暂无模型，上传 .glb / .obj 后在此展示</div>';
+    return;
+  }
+  grid.innerHTML = '';
+  // 倒序显示（最新的在前）
+  [...portfolioModels].reverse().forEach((item, ri) => {
+    const idx = portfolioModels.length - 1 - ri;
+    const size = (item.size / 1024 / 1024).toFixed(1) + 'MB';
+    const div = document.createElement('div');
+    div.className = 'model-card';
+    div.innerHTML = `
+      <div class="model-thumb">
+        <canvas class="thumb-canvas" data-idx="${idx}" style="display:${item.thumbUrl ? 'block' : 'none'};width:100%;height:100%;"></canvas>
+        <span class="thumb-placeholder" style="display:${item.thumbUrl ? 'none' : 'flex'};align-items:center;justify-content:center;width:100%;height:100%;font-size:36px;color:rgba(200,180,120,0.15);">🧊</span>
+      </div>
+      <div class="model-info">
+        <div class="model-name">${item.name}</div>
+        <div class="model-meta"><span>.${item.ext}</span><span>${size}</span></div>
+        <div class="model-actions">
+          <button onclick="event.stopPropagation();openModelViewer(${idx})">👁 查看</button>
+          <button onclick="event.stopPropagation();deleteModel(${idx})">🗑 删除</button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(div);
+    
+    // 异步生成缩略图
+    if (!item.thumbUrl) generateModelThumbnail(item, idx);
+  });
+}
+
+// ========== 模型缩略图生成（Three.js 离线渲染） ==========
+const _thumbPromises = new Map();
+
+async function generateModelThumbnail(model, idx) {
+  if (model.thumbUrl || _thumbPromises.has(model.blobId)) return;
+  _thumbPromises.set(model.blobId, true);
+  
+  try {
+    const blob = await getImageBlob(model.blobId);
+    if (!blob) return;
+    
+    const url = URL.createObjectURL(blob);
+    const ext = model.ext;
+    
+    // 创建离屏渲染场景
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 200;
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, preserveDrawingBuffer: true, antialias: true });
+    renderer.setPixelRatio(1);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x080818);
+    
+    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+    camera.position.set(2.5, 1.5, 3.5);
+    
+    // 光照
+    scene.add(new THREE.AmbientLight(0x404060, 0.4));
+    const key = new THREE.DirectionalLight(0xffeedd, 1.0); key.position.set(5, 8, 7); scene.add(key);
+    const fill = new THREE.DirectionalLight(0x8888ff, 0.3); fill.position.set(-5, 0, 5); scene.add(fill);
+    const rim = new THREE.DirectionalLight(0x4488ff, 0.4); rim.position.set(0, -3, -8); scene.add(rim);
+    
+    const loadPromise = new Promise((resolve, reject) => {
+      let loaded = false;
+      
+      if (ext === 'glb' || ext === 'gltf') {
+        new THREE.GLTFLoader().load(url, gltf => { resolve(gltf.scene); }, undefined, reject);
+      } else if (ext === 'fbx') {
+        new THREE.FBXLoader().load(url, fbx => { resolve(fbx); }, undefined, reject);
+      } else if (ext === 'obj') {
+        new THREE.OBJLoader().load(url, obj => { resolve(obj); }, undefined, reject);
+      } else {
+        const geo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x445588, metalness: 0.3, roughness: 0.6 });
+        const mesh = new THREE.Mesh(geo, mat);
+        resolve(mesh);
+      }
+    });
+    
+    const obj = await loadPromise;
+    
+    // 居中适配
+    const box = new THREE.Box3().setFromObject(obj);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const scale = maxDim > 0 ? 1.8 / maxDim : 1;
+    obj.position.sub(center.multiplyScalar(scale));
+    obj.scale.set(scale, scale, scale);
+    scene.add(obj);
+    
+    // 渲染一帧
+    renderer.render(scene, camera);
+    model.thumbUrl = canvas.toDataURL('image/jpeg', 0.7);
+    savePortfolio(); // 持久化缩略图
+    
+    // 清理
+    scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    renderer.dispose();
+    URL.revokeObjectURL(url);
+    
+    // 更新卡片
+    const thumbCanvas = document.querySelector(`.thumb-canvas[data-idx="${idx}"]`);
+    if (thumbCanvas) {
+      const ctx = thumbCanvas.getContext('2d');
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, 0, 0, 200, 200); };
+      img.src = model.thumbUrl;
+      thumbCanvas.style.display = 'block';
+      const placeholder = thumbCanvas.parentElement.querySelector('.thumb-placeholder');
+      if (placeholder) placeholder.style.display = 'none';
+    }
+  } catch(e) {
+    // 缩略图失败不影响使用
+  } finally {
+    _thumbPromises.delete(model.blobId);
+  }
+}
+
+function renderTextureGrid() {
+  const grid = document.getElementById('textureGrid');
+  if (portfolioTextures.length === 0) {
+    grid.innerHTML = '<div class="empty-tip">暂无贴图，上传 .png / .jpg 后在此展示</div>';
+    return;
+  }
+  grid.innerHTML = '';
+  [...portfolioTextures].reverse().forEach((item, ri) => {
+    const idx = portfolioTextures.length - 1 - ri;
+    const div = document.createElement('div');
+    div.className = 'texture-card';
+    div.innerHTML = `
+      <img src="${item.url || ''}" alt="${item.name}" onerror="this.style.display='none'">
+      <div class="texture-name">${item.name}</div>
+      <div class="del-texture" onclick="event.stopPropagation();deleteTexture(${idx})">✕</div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+async function deleteModel(idx) {
+  const item = portfolioModels[idx];
+  if (!confirm(`确定删除模型「${item.name}」？\n关联的贴图配置也会丢失，此操作不可恢复。`)) return;
+  if (item.blobId) await deleteImageBlob(item.blobId);
+  portfolioModels.splice(idx, 1);
+  savePortfolio();
+  renderModelGrid();
+  showToast('🗑️ 已删除模型');
+}
+
+async function deleteTexture(idx) {
+  const item = portfolioTextures[idx];
+  if (!confirm(`确定删除贴图「${item.name}」？此操作不可恢复。`)) return;
+  if (item.blobId) await deleteImageBlob(item.blobId);
+  portfolioTextures.splice(idx, 1);
+  savePortfolio();
+  renderTextureGrid();
+  showToast('🗑️ 已删除贴图');
+}
+
+// ========== 3D 模型查看器 ==========
+let viewerScene, viewerCamera, viewerRenderer, viewerControls;
+let viewerModel = null;
+let viewerAutoRotate = true;
+let viewerAnimId = null;
+let currentViewerItem = null;
+
+function openModelViewer(idx) {
+  const item = portfolioModels[idx];
+  if (!item) return;
+  currentViewerItem = item;
+  
+  const overlay = document.getElementById('modelViewer');
+  document.getElementById('viewerModelName').textContent = item.name;
+  document.getElementById('viewerModelMeta').textContent = `.${item.ext} · ${(item.size/1024/1024).toFixed(1)}MB`;
+  overlay.classList.add('show');
+  
+  // 先初始化场景，再加载模型（避免时序竞争）
+  initViewerScene();
+  loadModelIntoViewer(item);
+}
+
+function closeModelViewer() {
+  const overlay = document.getElementById('modelViewer');
+  overlay.classList.remove('show');
+  // 关闭贴图面板 & 清除状态
+  document.getElementById('viewerTexturePanel').classList.remove('open');
+  viewerTexturePanelOpen = false;
+  viewerAppliedTexture = null;
+  if (viewerAnimId) { cancelAnimationFrame(viewerAnimId); viewerAnimId = null; }
+  if (viewerRenderer) {
+    // 移除 resize 监听
+    if (viewerRenderer._resizeHandler) {
+      window.removeEventListener('resize', viewerRenderer._resizeHandler);
+    }
+    viewerRenderer.dispose();
+    viewerRenderer = null;
+  }
+  if (viewerScene) {
+    viewerScene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    viewerScene = null;
+  }
+  viewerModel = null;
+  currentViewerItem = null;
+  // 重置线框/UV 状态
+  _viewerWireframe = false;
+  _viewerUV = false;
+  // 清理 FBX 动画混合器
+  if (window._fbxMixers) window._fbxMixers = [];
+}
+
+function initViewerScene() {
+  // 如果已有场景，先清理
+  if (viewerRenderer) {
+    if (viewerAnimId) { cancelAnimationFrame(viewerAnimId); viewerAnimId = null; }
+    viewerRenderer.dispose();
+    if (viewerScene) {
+      viewerScene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      viewerScene = null;
+    }
+    viewerRenderer = null;
+    viewerModel = null;
+  }
+  
+  const container = document.getElementById('modelViewerCanvas');
+  const rect = container.getBoundingClientRect();
+  const W = rect.width || 800;
+  const H = rect.height || 500;
+  
+  viewerScene = new THREE.Scene();
+  viewerScene.background = new THREE.Color(0x1a1a1a);
+  
+  viewerCamera = new THREE.PerspectiveCamera(35, W / H, 0.1, 100);
+  viewerCamera.position.set(3, 2, 5);
+  
+  viewerRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  viewerRenderer.setSize(W, H);
+  viewerRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  viewerRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  viewerRenderer.toneMappingExposure = 1.0;
+  container.innerHTML = '';
+  container.appendChild(viewerRenderer.domElement);
+  
+  // CubeTexture 环境贴图（明亮工作室风格，参考 Substance 3D Painter 默认光环境）
+  try {
+    const size = 256;
+    const canvases = [];
+    // 六面：模拟室内摄影棚——白墙 + 柔光箱 + 灰地
+    const faces = [
+      { t:[0.95,0.93,0.9],  b:[0.7,0.68,0.65] },  // +x 柔光箱暖白
+      { t:[0.55,0.52,0.5],  b:[0.35,0.33,0.3] },  // -x 背光墙
+      { t:[0.92,0.9,0.88],  b:[0.6,0.58,0.55] },  // +y 天花板
+      { t:[0.25,0.23,0.2],  b:[0.12,0.1,0.08] },  // -y 地面
+      { t:[0.6,0.58,0.55],  b:[0.4,0.38,0.35] },  // +z 前墙
+      { t:[0.5,0.48,0.45],  b:[0.3,0.28,0.25] }   // -z 后墙
+    ];
+    for (let f = 0; f < 6; f++) {
+      const c = document.createElement('canvas');
+      c.width = size; c.height = size;
+      const cx = c.getContext('2d');
+      const [r1,g1,b1] = faces[f].t;
+      const [r2,g2,b2] = faces[f].b;
+      const grad = cx.createLinearGradient(0, 0, 0, size);
+      grad.addColorStop(0, `rgb(${r1*255|0},${g1*255|0},${b1*255|0})`);
+      grad.addColorStop(0.6, `rgb(${r2*255|0},${g2*255|0},${b2*255|0})`);
+      grad.addColorStop(1, `rgb(15,12,10)`);
+      cx.fillStyle = grad; cx.fillRect(0, 0, size, size);
+      canvases.push(c);
+    }
+    const envTexture = new THREE.CubeTexture(canvases);
+    envTexture.needsUpdate = true;
+    viewerScene.environment = envTexture;
+  } catch(e) {}
+  
+  // 光照——明亮工作室风格
+  const ambient = new THREE.AmbientLight(0x444444, 1.2);
+  viewerScene.add(ambient);
+  
+  const keyLight = new THREE.DirectionalLight(0xffeedd, 2.5);
+  keyLight.position.set(5, 8, 7);
+  viewerScene.add(keyLight);
+  
+  const fillLight = new THREE.DirectionalLight(0x8888ff, 0.8);
+  fillLight.position.set(-5, 0, 5);
+  viewerScene.add(fillLight);
+  
+  const rimLight = new THREE.DirectionalLight(0xddddff, 1.0);
+  rimLight.position.set(0, -3, -8);
+  viewerScene.add(rimLight);
+  
+  // 地面网格
+  const gridHelper = new THREE.GridHelper(10, 20, 0x444444, 0x222222);
+  gridHelper.position.y = -1;
+  viewerScene.add(gridHelper);
+  
+  // 环境球
+  const hemi = new THREE.HemisphereLight(0x333333, 0x111111, 0.3);
+  viewerScene.add(hemi);
+  
+  // 轨道控制
+  viewerControls = new THREE.OrbitControls(viewerCamera, viewerRenderer.domElement);
+  viewerControls.enableDamping = true;
+  viewerControls.dampingFactor = 0.08;
+  viewerControls.autoRotate = true;
+  viewerControls.autoRotateSpeed = 1.5;
+  viewerControls.minDistance = 1;
+  viewerControls.maxDistance = 20;
+  viewerControls.target.set(0, 0, 0);
+  
+  // 窗口自适应
+  const onResize = () => {
+    if (!viewerRenderer) return;
+    const r = container.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) {
+      viewerCamera.aspect = r.width / r.height;
+      viewerCamera.updateProjectionMatrix();
+      viewerRenderer.setSize(r.width, r.height);
+    }
+  };
+  window.addEventListener('resize', onResize);
+  // 存到 renderer 上以便关闭时清理
+  viewerRenderer._resizeHandler = onResize;
+  
+  // 动画时钟（用于 FBX 动画更新）
+  const clock = new THREE.Clock();
+  
+  // 开始渲染循环
+  function animate() {
+    viewerAnimId = requestAnimationFrame(animate);
+    if (viewerControls) viewerControls.update();
+    // 更新 FBX 动画混合器
+    if (window._fbxMixers) {
+      const delta = clock.getDelta();
+      window._fbxMixers.forEach(m => m.update(delta));
+    }
+    if (viewerRenderer && viewerScene && viewerCamera) {
+      viewerRenderer.render(viewerScene, viewerCamera);
+    }
+  }
+  animate();
+}
+
+async function loadModelIntoViewer(item) {
+  if (!viewerScene) return;
+  
+  // 移除旧模型
+  if (viewerModel) {
+    viewerScene.remove(viewerModel);
+    viewerModel.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    viewerModel = null;
+  }
+  
+  // 显示加载状态
+  document.getElementById('viewerModelMeta').textContent += ' · 加载中...';
+  
+  try {
+    const blob = await getImageBlob(item.blobId);
+    if (!blob) { showToast('⚠️ 模型数据丢失'); return; }
+    
+    const url = URL.createObjectURL(blob);
+    
+    if (item.ext === 'glb' || item.ext === 'gltf') {
+      const loader = new THREE.GLTFLoader();
+      loader.load(url, gltf => {
+        viewerModel = gltf.scene;
+        setupLoadedModel(viewerModel, item);
+      }, undefined, err => {
+        showToast('⚠️ 模型加载失败: ' + err.message);
+        document.getElementById('viewerModelMeta').textContent = `.${item.ext} · ${(item.size/1024/1024).toFixed(1)}MB`;
+      });
+    } else if (item.ext === 'obj') {
+      const loader = new THREE.OBJLoader();
+      loader.load(url, obj => {
+        viewerModel = obj;
+        // .obj 可能引用外部 .mtl 找不到 → 给无材质的网格加默认材质
+        obj.traverse(child => {
+          if (child.isMesh) {
+            if (!child.material || (Array.isArray(child.material) && child.material.length === 0)) {
+              child.material = new THREE.MeshStandardMaterial({ color: 0x88aacc, metalness: 0.2, roughness: 0.6 });
+            }
+          }
+        });
+        setupLoadedModel(viewerModel, item);
+      }, undefined, err => {
+        showToast('⚠️ OBJ 加载失败: ' + err.message);
+      });
+    } else if (item.ext === 'fbx') {
+      const loader = new THREE.FBXLoader();
+      loader.load(url, fbx => {
+        viewerModel = fbx;
+        // FBX 可能有动画/骨骼等，只取网格
+        fbx.traverse(child => {
+          if (child.isMesh) {
+            if (!child.material || (Array.isArray(child.material) && child.material.length === 0)) {
+              child.material = new THREE.MeshStandardMaterial({ color: 0x88aacc, metalness: 0.2, roughness: 0.6 });
+            }
+          }
+        });
+        setupLoadedModel(viewerModel, item);
+        // 检测 FBX 动画
+        if (fbx.animations && fbx.animations.length > 0) {
+          showToast(`🎬 检测到 ${fbx.animations.length} 个动画片段`);
+          try {
+            const mixer = new THREE.AnimationMixer(fbx);
+            const action = mixer.clipAction(fbx.animations[0]);
+            action.play();
+            if (!window._fbxMixers) window._fbxMixers = [];
+            window._fbxMixers.push(mixer);
+            showToast('▶ 动画已自动播放');
+          } catch(e) {}
+        }
+      }, undefined, err => {
+        showToast('⚠️ FBX 加载失败: ' + err.message);
+      });
+    } else {
+      // .stl 等格式 — 占位提示
+      showToast('🔔 .' + item.ext + ' 格式暂不支持交互预览，显示占位模型');
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x445588, wireframe: false, metalness: 0.3, roughness: 0.6 });
+      viewerModel = new THREE.Mesh(geo, mat);
+      setupLoadedModel(viewerModel, item);
+    }
+  } catch(err) {
+    showToast('⚠️ 模型加载失败');
+  }
+}
+
+function setupLoadedModel(model, item) {
+  // 居中适配
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const scale = maxDim > 0 ? 2.5 / maxDim : 1;
+  
+  model.position.sub(center.multiplyScalar(scale));
+  model.scale.set(scale, scale, scale);
+  
+  // 计算顶点/面数
+  let verts = 0, faces = 0;
+  model.traverse(o => {
+    if (o.isMesh && o.geometry) {
+      const g = o.geometry;
+      verts += g.attributes.position ? g.attributes.position.count : 0;
+      if (g.index) faces += g.index.count / 3;
+      else faces += (g.attributes.position ? g.attributes.position.count : 0) / 3;
+    }
+  });
+  
+  viewerScene.add(model);
+  viewerModel = model;
+  
+  // 给所有材质绑环境贴图（使金属度/粗糙度可见）
+  if (viewerScene && viewerScene.environment) {
+    model.traverse(child => {
+      if (child.isMesh && child.material) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach(mat => {
+          mat.envMap = viewerScene.environment;
+          mat.envMapIntensity = 1.2;
+          mat.needsUpdate = true;
+        });
+      }
+    });
+  }
+  
+  document.getElementById('viewerModelMeta').textContent = 
+    `顶点: ${verts.toLocaleString()} | 三角面: ${Math.round(faces).toLocaleString()}`;
+  
+  // 重置相机
+  resetViewerCamera();
+  
+  // 自动应用关联贴图
+  if (item && item.textures) {
+    const texMap = item.textures;
+    TEXTURE_SLOTS.forEach(slot => {
+      const texRef = texMap[slot.id];
+      if (texRef && texRef.blobId) {
+        const tex = portfolioTextures.find(t => t.blobId === texRef.blobId);
+        if (tex) {
+          setTimeout(() => applyViewerTexture(tex, slot), 200 + TEXTURE_SLOTS.indexOf(slot) * 150);
+        }
+      }
+    });
+  }
+}
+
+function resetViewerCamera() {
+  if (!viewerControls || !viewerCamera) return;
+  viewerCamera.position.set(3, 1.5, 4);
+  viewerControls.target.set(0, 0, 0);
+  viewerControls.update();
+}
+
+function toggleViewerAutoRotate() {
+  if (!viewerControls) return;
+  viewerControls.autoRotate = !viewerControls.autoRotate;
+  showToast(viewerControls.autoRotate ? '🔄 自动旋转开启' : '⏸ 自动旋转关闭');
+}
+
+// ========== 查看器高级功能 ==========
+let _viewerWireframe = false;
+let _viewerUV = false;
+let _uvCheckerTexture = null;
+
+function viewerScreenshot() {
+  if (!viewerRenderer) { showToast('⚠️ 查看器未就绪'); return; }
+  viewerRenderer.render(viewerScene, viewerCamera);
+  viewerRenderer.domElement.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const name = currentViewerItem ? currentViewerItem.name.replace(/\.[^.]+$/, '') : 'screenshot';
+    a.download = `${name}_${new Date().toISOString().slice(0,19).replace(/[:-]/g,'')}.png`;
+    a.click();
+    showToast('📷 截图已保存');
+  });
+}
+
+function toggleViewerWireframe() {
+  if (!viewerModel) { showToast('⚠️ 请先加载模型'); return; }
+  _viewerWireframe = !_viewerWireframe;
+  viewerModel.traverse(child => {
+    if (child.isMesh && child.material) {
+      const mats = Array.isArray(child.material) ? child.material : [child.material];
+      mats.forEach(mat => { mat.wireframe = _viewerWireframe; mat.needsUpdate = true; });
+    }
+  });
+  showToast(_viewerWireframe ? '🔲 线框模式' : '🔲 实体模式');
+}
+
+function toggleViewerUV() {
+  if (!viewerModel) { showToast('⚠️ 请先加载模型'); return; }
+  _viewerUV = !_viewerUV;
+  
+  if (_viewerUV) {
+    // 生成棋盘格纹理
+    if (!_uvCheckerTexture) {
+      const size = 256, step = 32;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      for (let y = 0; y < size; y += step) {
+        for (let x = 0; x < size; x += step) {
+          ctx.fillStyle = ((x/step + y/step) % 2 === 0) ? '#ffffff' : '#333333';
+          ctx.fillRect(x, y, step, step);
+        }
+      }
+      // 加 UV 方向标记
+      ctx.fillStyle = '#ff0000'; ctx.fillRect(0, 0, size, 4);  // U 方向红线
+      ctx.fillStyle = '#00ff00'; ctx.fillRect(0, 0, 4, size);  // V 方向绿线
+      _uvCheckerTexture = new THREE.CanvasTexture(canvas);
+      _uvCheckerTexture.wrapS = _uvCheckerTexture.wrapT = THREE.RepeatWrapping;
+    }
+    
+    viewerModel.traverse(child => {
+      if (child.isMesh && child.material) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach(mat => {
+          mat._savedMap = mat._savedMap || mat.map;
+          mat.map = _uvCheckerTexture;
+          mat.needsUpdate = true;
+        });
+      }
+    });
+    showToast('🏁 UV棋盘格');
+  } else {
+    viewerModel.traverse(child => {
+      if (child.isMesh && child.material) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach(mat => {
+          if (mat._savedMap) { mat.map = mat._savedMap; mat._savedMap = null; }
+          mat.needsUpdate = true;
+        });
+      }
+    });
+    showToast('🏁 恢复贴图');
+  }
+}
+
+// ========== 查看器快捷键 ==========
+document.addEventListener('keydown', function(e) {
+  const viewer = document.getElementById('modelViewer');
+  if (!viewer.classList.contains('show')) return;
+  
+  switch(e.key.toLowerCase()) {
+    case 'f': resetViewerCamera(); e.preventDefault(); break;
+    case 'g': 
+      const gh = viewerScene && viewerScene.children.find(c => c.isGridHelper);
+      if (gh) { gh.visible = !gh.visible; }
+      e.preventDefault(); break;
+    case 'w': toggleViewerWireframe(); e.preventDefault(); break;
+    case 'r': toggleViewerAutoRotate(); e.preventDefault(); break;
+    case ' ': toggleViewerAutoRotate(); e.preventDefault(); break;
+    case 'escape': closeModelViewer(); e.preventDefault(); break;
+    case 's': viewerScreenshot(); e.preventDefault(); break;
+    case 'u': toggleViewerUV(); e.preventDefault(); break;
+  }
+});
+
+// ========== 查看器贴图面板（多通道） ==========
+let viewerTexturePanelOpen = false;
+let viewerSlot = 'color';
+let viewerAppliedTexture = null; // 当前选中的通道
+
+function toggleTexturePanel() {
+  const panel = document.getElementById('viewerTexturePanel');
+  viewerTexturePanelOpen = !viewerTexturePanelOpen;
+  panel.classList.toggle('open', viewerTexturePanelOpen);
+  if (viewerTexturePanelOpen) { renderViewerSlots(); populateTextureList(); }
+}
+
+function renderViewerSlots() {
+  const container = document.getElementById('vtpSlots');
+  container.innerHTML = '';
+  const model = currentViewerItem;
+  const texMap = (model && model.textures) || {};
+  
+  TEXTURE_SLOTS.forEach(slot => {
+    const span = document.createElement('span');
+    span.className = 'vtp-slot' + (viewerSlot === slot.id ? ' active' : '') + (texMap[slot.id] ? ' filled' : '');
+    span.textContent = slot.icon + slot.label;
+    span.dataset.slotId = slot.id;
+    span.title = slot.label + (texMap[slot.id] ? ': ' + (texMap[slot.id].name || '已设置') : ': 未设置');
+    container.appendChild(span);
+  });
+}
+
+// 事件委托：点击通道标签
+try { document.getElementById('vtpSlots').addEventListener('click', function(e) {
+  const span = e.target.closest('.vtp-slot');
+  if (!span || !span.dataset.slotId) return;
+  viewerSlot = span.dataset.slotId;
+  renderViewerSlots();
+  populateTextureList();
+  document.getElementById('vtpParams').classList.remove('open');
+}); } catch(e) {}
+
+function populateTextureList() {
+  const list = document.getElementById('vtpList');
+  const textures = portfolioTextures || [];
+  const slot = TEXTURE_SLOTS.find(s => s.id === viewerSlot);
+  
+  if (textures.length === 0) {
+    list.innerHTML = '<div class="vtp-empty">暂无贴图<br>可在作品集页面上传</div>';
+    return;
+  }
+  
+  list.innerHTML = '';
+  textures.forEach((tex, i) => {
+    const div = document.createElement('div');
+    const thumbSrc = tex.thumbUrl || tex.url || '';
+    div.className = 'vtp-item';
+    div.dataset.texIdx = i;
+    div.innerHTML = `
+      <img src="${thumbSrc}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect fill=%22%23222%22 width=%2232%22 height=%2232%22/><text x=%2216%22 y=%2222%22 text-anchor=%22middle%22 font-size=%2214%22 fill=%22%23666%22>?</text></svg>'">
+      <span class="vtp-name">${tex.name}</span>
+    `;
+    div.ondblclick = () => openTexPreview(tex);
+    list.appendChild(div);
+  });
+}
+
+// 事件委托：贴图列表点击应用
+try { document.getElementById('vtpList').addEventListener('click', function(e) {
+  const item = e.target.closest('.vtp-item');
+  if (!item || item.dataset.texIdx === undefined) return;
+  const tex = portfolioTextures[parseInt(item.dataset.texIdx)];
+  if (!tex) return;
+  const slot = TEXTURE_SLOTS.find(s => s.id === viewerSlot);
+  applyViewerTexture(tex, slot);
+}); } catch(e) {}
+
+
+// 查看器内直接上传贴图
+try { document.getElementById('vtpFileInput').addEventListener('change', async function(e) {
+  const files = Array.from(e.target.files);
+  for (const file of files) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['png','jpg','jpeg','tga'].includes(ext)) { showToast('⚠️ 不支持 .' + ext); continue; }
+    const blobId = 'vtp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    await saveImageBlob(blobId, file);
+    const url = URL.createObjectURL(file);
+    portfolioTextures.push({ blobId, name: file.name, ext, size: file.size, time: Date.now(), url });
+    savePortfolio();
+    showToast('✅ 已上传 ' + file.name);
+  }
+  e.target.value = '';
+  populateTextureList();
+}); } catch(e) {}
+
+
+async function applyViewerTexture(tex, slot) {
+  if (!viewerModel) { showToast('⚠️ 请先加载模型'); return; }
+  if (!slot) slot = TEXTURE_SLOTS.find(s => s.id === viewerSlot) || TEXTURE_SLOTS[0];
+  
+  // 从模型取当前通道参数（法线类型等），传给 setMaterialTexture
+  let slotParams = {};
+  const model = currentViewerItem;
+  if (model && model.textureParams && slot) {
+    slotParams = model.textureParams[slot.id] || {};
+  }
+  
+  try {
+    let blob = await getImageBlob(tex.blobId);
+    if (!blob) { showToast('⚠️ 贴图数据丢失'); return; }
+    
+    const ext = tex.ext || tex.name.split('.').pop().toLowerCase();
+    const url = URL.createObjectURL(blob);
+    
+    if (ext === 'tga') {
+      const loader = new THREE.TGALoader();
+      loader.load(url, function(tgaTex) {
+        tgaTex.wrapS = THREE.RepeatWrapping;
+        tgaTex.wrapT = THREE.RepeatWrapping;
+        tgaTex.anisotropy = 4;
+        setMaterialTexture(tgaTex, slot.matProp, slot, slotParams);
+        saveViewerTexture(tex, slot);
+      }, undefined, () => showToast('⚠️ TGA 贴图加载失败'));
+    } else {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width; canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.anisotropy = 4;
+        setMaterialTexture(texture, slot.matProp, slot, slotParams);
+        saveViewerTexture(tex, slot);
+      };
+      img.onerror = () => showToast('⚠️ 贴图加载失败');
+      img.src = url;
+    }
+  } catch(e) {
+    showToast('⚠️ 贴图应用失败');
+  }
+}
+
+function setMaterialTexture(texture, matProp, slot, explicitParams) {
+  const model = currentViewerItem;
+  let params = {};
+  if (explicitParams) {
+    params = explicitParams;
+  } else if (model && model.textureParams && slot) {
+    params = model.textureParams[slot.id] || {};
+  }
+  
+  // Max(DirectX) 法线 → 反转绿色通道
+  if (slot && slot.id === 'normal' && params.normalType === 'max') {
+    try {
+      const img = texture.image;
+      if (img && img.data && img.width) {
+        // DataTexture (TGALoader) → 直接修改像素数据
+        const d = img.data;
+        for (let i = 1; i < d.length; i += 4) d[i] = 255 - d[i];
+        texture.needsUpdate = true;
+      } else if (img && (img instanceof HTMLCanvasElement || img instanceof HTMLImageElement || img instanceof Image)) {
+        // 普通 Image/Canvas 纹理 → canvas 重绘翻转
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width || 512;
+        canvas.height = img.height || 512;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < imgData.data.length; i += 4) {
+          imgData.data[i + 1] = 255 - imgData.data[i + 1];
+        }
+        ctx.putImageData(imgData, 0, 0);
+        const newTex = new THREE.CanvasTexture(canvas);
+        newTex.wrapS = texture.wrapS;
+        newTex.wrapT = texture.wrapT;
+        newTex.repeat.copy(texture.repeat);
+        newTex.offset.copy(texture.offset);
+        newTex.anisotropy = texture.anisotropy || 4;
+        texture = newTex;
+      }
+    } catch(e) { /* fallback: use original */ }
+  }
+  
+  // UV 平铺 & 偏移
+  if (params.tilingX !== undefined) texture.repeat.x = params.tilingX;
+  if (params.tilingY !== undefined) texture.repeat.y = params.tilingY;
+  if (params.offsetX !== undefined) texture.offset.x = params.offsetX;
+  if (params.offsetY !== undefined) texture.offset.y = params.offsetY;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  
+  viewerModel.traverse(child => {
+    if (child.isMesh && child.material) {
+      const mats = Array.isArray(child.material) ? child.material : [child.material];
+      mats.forEach(mat => {
+        if (matProp === 'alphaMap') mat.transparent = true;
+        mat[matProp] = texture;
+        // 应用参数到材质
+        if (slot && slot.id === 'normal' && params.intensity !== undefined) {
+          mat.normalScale = new THREE.Vector2(params.intensity, params.intensity);
+        }
+        if (slot && slot.id === 'roughness') {
+          if (params.intensity !== undefined) mat.roughness = params.intensity;
+          if (viewerScene && viewerScene.environment) mat.envMap = viewerScene.environment;
+          mat.envMapIntensity = 1.0;
+        }
+        if (slot && slot.id === 'metalness') {
+          if (params.intensity !== undefined) mat.metalness = params.intensity;
+          if (viewerScene && viewerScene.environment) mat.envMap = viewerScene.environment;
+          mat.envMapIntensity = 1.2;
+        }
+        if (slot && slot.id === 'emission' && params.intensity !== undefined) {
+          mat.emissiveIntensity = params.intensity;
+        }
+        if (slot && slot.id === 'opacity') {
+          if (params.threshold !== undefined) mat.alphaTest = params.threshold;
+          mat.transparent = true;
+        }
+        mat.needsUpdate = true;
+      });
+    }
+  });
+}
+
+function saveViewerTexture(tex, slot) {
+  viewerAppliedTexture = { blobId: tex.blobId, name: tex.name, slot: slot.id };
+  // 也保存到模型的 textures 关联
+  if (currentViewerItem) {
+    if (!currentViewerItem.textures) currentViewerItem.textures = {};
+    currentViewerItem.textures[slot.id] = { blobId: tex.blobId, name: tex.name };
+    savePortfolio();
+  }
+  renderViewerSlots();
+  populateTextureList();
+  showToast(`✅ ${slot.label}贴图已应用`);
+}
+
+function clearViewerTexture() {
+  if (!viewerModel) return;
+  
+  viewerModel.traverse(child => {
+    if (child.isMesh && child.material) {
+      const mats = Array.isArray(child.material) ? child.material : [child.material];
+      mats.forEach(mat => {
+        mat.map = null;
+        mat.normalMap = null;
+        mat.roughnessMap = null;
+        mat.metalnessMap = null;
+        mat.emissiveMap = null;
+        mat.alphaMap = null;
+        mat.transparent = false;
+        mat.needsUpdate = true;
+      });
+    }
+  });
+  
+  viewerAppliedTexture = null;
+  renderViewerSlots();
+  populateTextureList();
+  showToast('🗑️ 贴图已清除');
+}
+
+// ========== 查看器内贴图参数编辑 ==========
+function toggleViewerParams() {
+  const el = document.getElementById('vtpParams');
+  const isOpen = el.classList.toggle('open');
+  if (isOpen) renderViewerParams();
+}
+
+function renderViewerParams() {
+  const el = document.getElementById('vtpParams');
+  const slot = TEXTURE_SLOTS.find(s => s.id === viewerSlot);
+  if (!slot) return;
+  
+  const model = currentViewerItem;
+  if (!model) return;
+  if (!model.textureParams) model.textureParams = defaultSlotParams();
+  const params = model.textureParams[slot.id] || {};
+  const paramTypes = slot.paramTypes || {};
+  const paramOptions = slot.paramOptions || {};
+  
+  el.innerHTML = '';
+  slot.params.forEach(param => {
+    const label = slot.paramLabels[param] || param;
+    const type = paramTypes[param] || 'range';
+    const min = slot.paramMins[param] || 0;
+    const max = slot.paramMaxs[param] || 1;
+    const step = slot.paramSteps[param] || 0.01;
+    const val = params[param] !== undefined ? params[param] : 
+      (param === 'tilingX' || param === 'tilingY' ? 1 : (type === 'select' ? (paramOptions[param] ? paramOptions[param][0].split(':')[0] : 'maya') : 0));
+    
+    const row = document.createElement('div');
+    row.className = 'sp-row';
+    
+    if (type === 'select') {
+      const options = paramOptions[param] || [];
+      row.innerHTML = `
+        <div class="sp-label"><span>${label}</span></div>
+        <select onchange="updateViewerParamSelect('${param}',this.value)">
+          ${options.map(opt => {
+            const [optVal, optLabel] = opt.split(':');
+            return `<option value="${optVal}" ${String(val) === optVal ? 'selected' : ''}>${optLabel || optVal}</option>`;
+          }).join('')}
+        </select>
+      `;
+    } else {
+      row.innerHTML = `
+        <div class="sp-label">
+          <span>${label}</span>
+          <input type="number" min="${min}" max="${max}" step="${step}" value="${Number(val).toFixed(2)}"
+            onchange="updateViewerParamNum('${param}',this.value)">
+        </div>
+        <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+          oninput="updateViewerParam('${param}',this.value)">
+      `;
+    }
+    el.appendChild(row);
+  });
+}
+
+function updateViewerParam(param, value) {
+  const model = currentViewerItem;
+  if (!model) return;
+  if (!model.textureParams) model.textureParams = defaultSlotParams();
+  if (!model.textureParams[viewerSlot]) model.textureParams[viewerSlot] = {};
+  const num = parseFloat(value);
+  model.textureParams[viewerSlot][param] = num;
+  savePortfolio();
+  renderViewerParams();
+  // 如果当前通道有贴图，重新应用
+  if (viewerAppliedTexture && viewerAppliedTexture.slot === viewerSlot) {
+    const tex = portfolioTextures.find(t => t.blobId === viewerAppliedTexture.blobId);
+    if (tex) applyViewerTexture(tex, TEXTURE_SLOTS.find(s => s.id === viewerSlot));
+  }
+}
+
+function updateViewerParamNum(param, value) {
+  let num = parseFloat(value);
+  if (isNaN(num)) return;
+  const slot = TEXTURE_SLOTS.find(s => s.id === viewerSlot);
+  if (slot) {
+    const min = slot.paramMins[param]; if (min !== undefined && num < min) num = min;
+    const max = slot.paramMaxs[param]; if (max !== undefined && num > max) num = max;
+  }
+  updateViewerParam(param, num);
+}
+
+function updateViewerParamSelect(param, value) {
+  const model = currentViewerItem;
+  if (!model) return;
+  if (!model.textureParams) model.textureParams = defaultSlotParams();
+  if (!model.textureParams[viewerSlot]) model.textureParams[viewerSlot] = {};
+  model.textureParams[viewerSlot][param] = value;
+  savePortfolio();
+  renderViewerParams();
+  // 重新应用贴图以触发效果（如法线翻转）
+  if (viewerAppliedTexture && viewerAppliedTexture.slot === viewerSlot) {
+    const tex = portfolioTextures.find(t => t.blobId === viewerAppliedTexture.blobId);
+    if (tex) applyViewerTexture(tex, TEXTURE_SLOTS.find(s => s.id === viewerSlot));
+  }
+}
+
+// ========== 模型贴图选择器（多通道） ==========
+let currentPickerModelIdx = -1;
+
+function showTextureSlots() {
+  const model = portfolioModels[currentPickerModelIdx];
+  if (!model) return;
+  
+  document.getElementById('texPickerTitle').textContent = '🎨 贴图通道';
+  document.getElementById('texPickerBackBtn').style.display = 'none';
+  
+  const list = document.getElementById('texPickerList');
+  list.innerHTML = '';
+  
+  const textures = model.textures || {};
+  TEXTURE_SLOTS.forEach(slot => {
+    const assigned = textures[slot.id];
+    const div = document.createElement('div');
+    div.className = 'tex-picker-item';
+    div.style.padding = '8px 10px';
+    div.innerHTML = `
+      <span style="font-size:16px;width:24px;text-align:center;">${slot.icon}</span>
+      <span class="tp-name" style="font-size:11px;">
+        ${slot.label}
+        <span style="font-size:9px;color:${assigned ? 'var(--accent-1)' : 'var(--text-quaternary)'};display:block;">
+          ${assigned && assigned.blobId ? assigned.name || '已选择' : '未设置'}
+        </span>
+      </span>
+      <div style="display:flex;gap:2px;flex-shrink:0;">
+        ${assigned && assigned.blobId ? `<button class="tp-sel-btn" onclick="event.stopPropagation();clearTextureSlot('${slot.id}')" style="padding:3px 5px;font-size:9px;border-radius:4px;border:1px solid rgba(255,80,80,0.1);background:transparent;color:rgba(255,80,80,0.4);cursor:pointer;" title="清除贴图">✕</button>` : ''}
+        ${assigned && assigned.blobId ? `<button class="tp-sel-btn" onclick="event.stopPropagation();showSlotParams('${slot.id}')" style="padding:3px 6px;font-size:9px;border-radius:4px;border:1px solid rgba(200,180,120,0.08);background:transparent;color:var(--text-tertiary);cursor:pointer;" title="参数">⚙</button>` : ''}
+        <button class="tp-sel-btn" onclick="event.stopPropagation();showTexturePickerForSlot('${slot.id}')"
+          style="padding:3px 8px;font-size:10px;border-radius:4px;border:1px solid rgba(200,180,120,0.12);background:rgba(200,180,120,0.04);color:var(--accent-1);cursor:pointer;">
+          ${assigned && assigned.blobId ? '更换' : '选择'}
+        </button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function showTexturePickerForSlot(slotId) {
+  const model = portfolioModels[currentPickerModelIdx];
+  if (!model) return;
+  
+  const slot = TEXTURE_SLOTS.find(s => s.id === slotId);
+  if (!slot) return;
+  
+  document.getElementById('texPickerTitle').textContent = `${slot.icon} 选择${slot.label}贴图`;
+  document.getElementById('texPickerBackBtn').style.display = 'block';
+  
+  const list = document.getElementById('texPickerList');
+  const textures = portfolioTextures || [];
+  
+  if (textures.length === 0) {
+    list.innerHTML = '<div class="tex-picker-empty">暂无贴图<br>先上传贴图到作品集</div>';
+    return;
+  }
+  
+  list.innerHTML = '';
+  textures.forEach(tex => {
+    const div = document.createElement('div');
+    const isActive = model.textures && model.textures[slotId] && model.textures[slotId].blobId === tex.blobId;
+    div.className = 'tex-picker-item';
+    const src = tex.thumbUrl || tex.url || '';
+    div.innerHTML = `
+      <img src="${src}" onerror="this.style.display='none'">
+      <span class="tp-name">${tex.name}</span>
+      ${isActive ? '<span style="font-size:9px;color:var(--accent-1);">✓</span>' : ''}
+    `;
+    div.onclick = () => assignTextureToSlot(currentPickerModelIdx, slotId, tex);
+    div.ondblclick = () => { closeTexturePicker(); setTimeout(() => openTexPreview(tex), 200); };
+    list.appendChild(div);
+  });
+}
+
+// ========== 贴图参数编辑器 ==========
+function showSlotParams(slotId) {
+  const model = portfolioModels[currentPickerModelIdx];
+  if (!model) return;
+  const slot = TEXTURE_SLOTS.find(s => s.id === slotId);
+  if (!slot) return;
+  
+  if (!model.textureParams) model.textureParams = defaultSlotParams();
+  const params = model.textureParams[slotId] || {};
+  const paramTypes = slot.paramTypes || {};
+  const paramOptions = slot.paramOptions || {};
+  
+  document.getElementById('texPickerTitle').textContent = `${slot.icon} ${slot.label} 参数`;
+  document.getElementById('texPickerBackBtn').style.display = 'block';
+  
+  const list = document.getElementById('texPickerList');
+  list.innerHTML = '';
+  
+  slot.params.forEach(param => {
+    const label = slot.paramLabels[param] || param;
+    const type = paramTypes[param] || 'range';
+    const min = slot.paramMins[param] || 0;
+    const max = slot.paramMaxs[param] || 1;
+    const step = slot.paramSteps[param] || 0.01;
+    const val = params[param] !== undefined ? params[param] : 
+      (param === 'tilingX' || param === 'tilingY' ? 1 : (type === 'select' ? (paramOptions[param] ? paramOptions[param][0].split(':')[0] : 'maya') : 0));
+    
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:8px 10px;';
+    
+    if (type === 'select') {
+      const options = paramOptions[param] || [];
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+          <span style="font-size:11px;color:var(--text-secondary);">${label}</span>
+        </div>
+        <select onchange="updateSlotParamSelect('${slotId}','${param}',this.value)"
+          style="width:100%;padding:5px 8px;font-size:11px;border-radius:6px;
+            background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+            color:var(--text-secondary);outline:none;cursor:pointer;">
+          ${options.map(opt => {
+            const [optVal, optLabel] = opt.split(':');
+            return `<option value="${optVal}" ${String(val) === optVal ? 'selected' : ''}>${optLabel || optVal}</option>`;
+          }).join('')}
+        </select>
+      `;
+    } else {
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-size:11px;color:var(--text-secondary);">${label}</span>
+          <input type="number" min="${min}" max="${max}" step="${step}" value="${Number(val).toFixed(2)}"
+            id="sp_inp_${slotId}_${param}"
+            onchange="updateSlotParamNum('${slotId}','${param}',this.value)"
+            style="width:60px;padding:2px 6px;font-size:10px;border-radius:4px;
+              background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+              color:var(--accent-1);text-align:right;outline:none;">
+        </div>
+        <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+          id="sp_rng_${slotId}_${param}"
+          style="width:100%;height:3px;-webkit-appearance:none;background:rgba(200,180,120,0.1);border-radius:2px;outline:none;cursor:pointer;"
+          oninput="updateSlotParam('${slotId}','${param}',this.value)">
+      `;
+    }
+    list.appendChild(div);
+  });
+}
+
+function updateSlotParam(slotId, param, value) {
+  const model = portfolioModels[currentPickerModelIdx];
+  if (!model) return;
+  if (!model.textureParams) model.textureParams = defaultSlotParams();
+  if (!model.textureParams[slotId]) model.textureParams[slotId] = {};
+  const num = parseFloat(value);
+  model.textureParams[slotId][param] = num;
+  savePortfolio();
+  // 同步数值输入框
+  const inp = document.getElementById(`sp_inp_${slotId}_${param}`);
+  if (inp) inp.value = num.toFixed(2);
+}
+
+function updateSlotParamNum(slotId, param, value) {
+  const model = portfolioModels[currentPickerModelIdx];
+  if (!model) return;
+  let num = parseFloat(value);
+  if (isNaN(num)) return;
+  // 钳制到 min/max
+  const slot = TEXTURE_SLOTS.find(s => s.id === slotId);
+  if (slot) {
+    const min = slot.paramMins[param]; if (min !== undefined && num < min) num = min;
+    const max = slot.paramMaxs[param]; if (max !== undefined && num > max) num = max;
+  }
+  if (!model.textureParams) model.textureParams = defaultSlotParams();
+  if (!model.textureParams[slotId]) model.textureParams[slotId] = {};
+  model.textureParams[slotId][param] = num;
+  savePortfolio();
+  // 同步滑块
+  const rng = document.getElementById(`sp_rng_${slotId}_${param}`);
+  if (rng) rng.value = num;
+}
+
+function updateSlotParamSelect(slotId, param, value) {
+  const model = portfolioModels[currentPickerModelIdx];
+  if (!model) return;
+  if (!model.textureParams) model.textureParams = defaultSlotParams();
+  if (!model.textureParams[slotId]) model.textureParams[slotId] = {};
+  model.textureParams[slotId][param] = value;
+  savePortfolio();
+}
+
+function showTexturePicker(idx, event) {
+  currentPickerModelIdx = idx;
+  const model = portfolioModels[idx];
+  if (!model) return;
+  
+  // 初始化 textures 和 textureParams 对象
+  if (!model.textures) model.textures = {};
+  if (!model.textureParams) model.textureParams = defaultSlotParams();
+  
+  const overlay = document.getElementById('texPicker');
+  
+  // 定位弹窗
+  const btn = event && event.target;
+  if (btn) {
+    const rect = btn.getBoundingClientRect();
+    const popup = document.getElementById('texPickerPopup');
+    popup.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+    popup.style.top = (rect.bottom + 4) + 'px';
+  }
+  
+  showTextureSlots();
+  overlay.classList.add('show');
+}
+
+function closeTexturePicker() {
+  document.getElementById('texPicker').classList.remove('show');
+}
+
+function assignTextureToSlot(idx, slotId, tex) {
+  const model = portfolioModels[idx];
+  if (!model) return;
+  if (!model.textures) model.textures = {};
+  model.textures[slotId] = { blobId: tex.blobId, name: tex.name };
+  savePortfolio();
+  showTextureSlots();
+  // 更新卡片标记
+  renderModelGrid();
+  showToast(`✅ ${TEXTURE_SLOTS.find(s=>s.id===slotId).label}贴图已设置`);
+}
+
+function clearTextureSlot(slotId) {
+  const model = portfolioModels[currentPickerModelIdx];
+  if (!model) return;
+  if (!model.textures) model.textures = {};
+  delete model.textures[slotId];
+  if (model.textureParams && model.textureParams[slotId]) {
+    delete model.textureParams[slotId];
+  }
+  savePortfolio();
+  showTextureSlots();
+  renderModelGrid();
+  showToast(`🗑️ 已清除${TEXTURE_SLOTS.find(s=>s.id===slotId).label}贴图`);
+}
+
+// ========== 贴图预览大图 + TGA 缩略图生成 ==========
+async function openTexPreview(tex) {
+  const overlay = document.getElementById('texPreview');
+  const body = document.getElementById('texPreviewBody');
+  document.getElementById('texPreviewName').textContent = tex.name;
+  body.innerHTML = '<div class="tex-preview-loading">加载中...</div>';
+  overlay.classList.add('show');
+  
+  try {
+    const blob = await getImageBlob(tex.blobId);
+    if (!blob) { body.innerHTML = '<div class="tex-preview-loading">数据丢失</div>'; return; }
+    
+    const ext = tex.ext || tex.name.split('.').pop().toLowerCase();
+    const url = URL.createObjectURL(blob);
+    
+    if (ext === 'tga') {
+      const loader = new THREE.TGALoader();
+      loader.load(url, function(tgaTex) {
+        const canvas = document.createElement('canvas');
+        canvas.width = tgaTex.image.width;
+        canvas.height = tgaTex.image.height;
+        const ctx = canvas.getContext('2d');
+        const imgData = new ImageData(
+          new Uint8ClampedArray(tgaTex.image.data),
+          tgaTex.image.width, tgaTex.image.height
+        );
+        canvas.width = imgData.width;
+        canvas.height = imgData.height;
+        ctx.putImageData(imgData, 0, 0);
+        body.innerHTML = '';
+        body.appendChild(canvas);
+      }, undefined, function() {
+        body.innerHTML = '<div class="tex-preview-loading">TGA 加载失败</div>';
+      });
+    } else {
+      body.innerHTML = `<img src="${url}" alt="${tex.name}">`;
+    }
+  } catch(e) {
+    body.innerHTML = '<div class="tex-preview-loading">加载失败</div>';
+  }
+}
+
+function closeTexPreview() {
+  document.getElementById('texPreview').classList.remove('show');
+}
+
+// 生成 TGA 缩略图（异步填充到 tex.thumbUrl）
+async function generateTgaThumb(tex) {
+  if (tex.thumbUrl || (tex.ext !== 'tga' && (!tex.ext && !tex.name.endsWith('.tga')))) return;
+  try {
+    const blob = await getImageBlob(tex.blobId);
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const loader = new THREE.TGALoader();
+    loader.load(url, function(tgaTex) {
+      const w = Math.min(tgaTex.image.width, 64);
+      const h = Math.min(tgaTex.image.height, 64);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      const imgData = new ImageData(
+        new Uint8ClampedArray(tgaTex.image.data),
+        tgaTex.image.width, tgaTex.image.height
+      );
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = imgData.width;
+      tempCanvas.height = imgData.height;
+      tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
+      ctx.drawImage(tempCanvas, 0, 0, w, h);
+      tex.thumbUrl = canvas.toDataURL('image/png');
+      // 刷新贴图列表中的缩略图
+      const imgs = document.querySelectorAll(`.vtp-item img[data-blobid="${tex.blobId}"]`);
+      imgs.forEach(img => { img.src = tex.thumbUrl; });
+    });
+  } catch(e) {}
+}
+
+// 修改 populateTextureList 加入双击预览 & TGA 缩略图
+const _origPopulate = populateTextureList;
+populateTextureList = function() {
+  const list = document.getElementById('vtpList');
+  const textures = portfolioTextures || [];
+  
+  if (textures.length === 0) {
+    list.innerHTML = '<div class="vtp-empty">暂无贴图<br>可在作品集页面上传</div>';
+    return;
+  }
+  
+  list.innerHTML = '';
+  textures.forEach((tex, i) => {
+    const div = document.createElement('div');
+    div.className = 'vtp-item' + (viewerAppliedTexture && viewerAppliedTexture.blobId === tex.blobId ? ' active' : '');
+    div.dataset.texIdx = i;
+    const thumbSrc = tex.thumbUrl || tex.url || '';
+    div.innerHTML = `
+      <img src="${thumbSrc}" data-blobid="${tex.blobId}"
+        onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect fill=%22%23222%22 width=%2232%22 height=%2232%22/><text x=%2216%22 y=%2222%22 text-anchor=%22middle%22 font-size=%2214%22 fill=%22%23666%22>?</text></svg>'">
+      <span class="vtp-name">${tex.name}</span>
+    `;
+    div.ondblclick = () => openTexPreview(tex);
+    list.appendChild(div);
+    
+    // TGA 文件异步生成缩略图
+    const ext = tex.ext || tex.name.split('.').pop().toLowerCase();
+    if (ext === 'tga' && !tex.thumbUrl) generateTgaThumb(tex);
+  });
+};
+
+// ========== 贴图通道定义 ==========
+function defaultSlotParams() {
+  return {
+    color: { tilingX: 1, tilingY: 1, offsetX: 0, offsetY: 0 },
+    normal: { intensity: 1, normalType: 'maya' },
+    roughness: { intensity: 1 },
+    metalness: { intensity: 1 },
+    emission: { intensity: 1 },
+    opacity: { threshold: 0.5 }
+  };
+}
+const TEXTURE_SLOTS = [
+  { id: 'color', label: '颜色', icon: '🎨', prop: 'map', matProp: 'map',
+    params: ['tilingX','tilingY','offsetX','offsetY'],
+    paramLabels: { tilingX:'U平铺', tilingY:'V平铺', offsetX:'U偏移', offsetY:'V偏移' },
+    paramMins: { tilingX:0.1, tilingY:0.1, offsetX:-5, offsetY:-5 },
+    paramMaxs: { tilingX:10, tilingY:10, offsetX:5, offsetY:5 },
+    paramSteps: { tilingX:0.1, tilingY:0.1, offsetX:0.01, offsetY:0.01 } },
+  { id: 'normal', label: '法线', icon: '🔵', prop: 'normalMap', matProp: 'normalMap',
+    params: ['tilingX','tilingY','offsetX','offsetY','intensity','normalType'],
+    paramLabels: { tilingX:'U平铺', tilingY:'V平铺', offsetX:'U偏移', offsetY:'V偏移', intensity:'强度', normalType:'法线类型' },
+    paramMins: { tilingX:0.1, tilingY:0.1, offsetX:-5, offsetY:-5, intensity:0 },
+    paramMaxs: { tilingX:10, tilingY:10, offsetX:5, offsetY:5, intensity:5 },
+    paramSteps: { tilingX:0.1, tilingY:0.1, offsetX:0.01, offsetY:0.01, intensity:0.01 },
+    paramTypes: { normalType: 'select' },
+    paramOptions: { normalType: ['maya:🟢 Maya(OpenGL)', 'max:🔵 Max(DirectX)'] } },
+  { id: 'roughness', label: '粗糙度', icon: '⚪', prop: 'roughnessMap', matProp: 'roughnessMap',
+    params: ['tilingX','tilingY','offsetX','offsetY','intensity'],
+    paramLabels: { tilingX:'U平铺', tilingY:'V平铺', offsetX:'U偏移', offsetY:'V偏移', intensity:'强度' },
+    paramMins: { tilingX:0.1, tilingY:0.1, offsetX:-5, offsetY:-5, intensity:0 },
+    paramMaxs: { tilingX:10, tilingY:10, offsetX:5, offsetY:5, intensity:2 },
+    paramSteps: { tilingX:0.1, tilingY:0.1, offsetX:0.01, offsetY:0.01, intensity:0.01 } },
+  { id: 'metalness', label: '金属度', icon: '🔘', prop: 'metalnessMap', matProp: 'metalnessMap',
+    params: ['tilingX','tilingY','offsetX','offsetY','intensity'],
+    paramLabels: { tilingX:'U平铺', tilingY:'V平铺', offsetX:'U偏移', offsetY:'V偏移', intensity:'强度' },
+    paramMins: { tilingX:0.1, tilingY:0.1, offsetX:-5, offsetY:-5, intensity:0 },
+    paramMaxs: { tilingX:10, tilingY:10, offsetX:5, offsetY:5, intensity:2 },
+    paramSteps: { tilingX:0.1, tilingY:0.1, offsetX:0.01, offsetY:0.01, intensity:0.01 } },
+  { id: 'emission', label: '自发光', icon: '💡', prop: 'emissiveMap', matProp: 'emissiveMap',
+    params: ['tilingX','tilingY','offsetX','offsetY','intensity'],
+    paramLabels: { tilingX:'U平铺', tilingY:'V平铺', offsetX:'U偏移', offsetY:'V偏移', intensity:'强度' },
+    paramMins: { tilingX:0.1, tilingY:0.1, offsetX:-5, offsetY:-5, intensity:0 },
+    paramMaxs: { tilingX:10, tilingY:10, offsetX:5, offsetY:5, intensity:10 },
+    paramSteps: { tilingX:0.1, tilingY:0.1, offsetX:0.01, offsetY:0.01, intensity:0.1 } },
+  { id: 'opacity', label: '透明度', icon: '🔲', prop: 'alphaMap', matProp: 'alphaMap',
+    params: ['tilingX','tilingY','offsetX','offsetY','threshold'],
+    paramLabels: { tilingX:'U平铺', tilingY:'V平铺', offsetX:'U偏移', offsetY:'V偏移', threshold:'阈值' },
+    paramMins: { tilingX:0.1, tilingY:0.1, offsetX:-5, offsetY:-5, threshold:0 },
+    paramMaxs: { tilingX:10, tilingY:10, offsetX:5, offsetY:5, threshold:1 },
+    paramSteps: { tilingX:0.1, tilingY:0.1, offsetX:0.01, offsetY:0.01, threshold:0.01 } }
+];
+
+// ========== 素材库功能（IndexedDB + ObjectURL） ==========
+let assetBlobRefs = new Map(); // id -> ObjectURL 缓存
+
+async function initAssets() {
+  try {
+    const saved = localStorage.getItem(ASSET_KEY);
+    if (saved) assets = JSON.parse(saved);
+    // 从 IndexedDB 恢复素材图片的 ObjectURL
+    for (const type of ['image', 'video', 'audio']) {
+      const list = assets[type] || [];
+      for (const item of list) {
+        if (item.blobId) {
+          const blob = await getImageBlob(item.blobId);
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            item.url = url;
+            assetBlobRefs.set(item.blobId, url);
+          }
+        }
+      }
+    }
+  } catch(e) {}
+  renderAssets();
+}
+
+function saveAssets() {
+  // 只保存元数据（不含 data URI 或 blob）
+  const clean = { image: [], video: [], audio: [] };
+  for (const type of ['image', 'video', 'audio']) {
+    clean[type] = (assets[type] || []).map(item => ({
+      name: item.name,
+      blobId: item.blobId,
+      size: item.size,
+      time: item.time
+    }));
+  }
+  localStorage.setItem(ASSET_KEY, JSON.stringify(clean));
+}
+
+function switchAssetTab(type) {
+  currentAssetTab = type;
+  document.querySelectorAll('.asset-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderAssets();
+}
+
+function renderAssets() {
+  const grid = document.getElementById('assetGrid');
+  const list = assets[currentAssetTab] || [];
+  
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="empty-tip">暂无素材，点击上方区域上传</div>';
+    return;
+  }
+  
+  grid.innerHTML = '';
+  list.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = 'asset-item';
+    const src = item.url || '';
+    if (currentAssetTab === 'video') {
+      div.innerHTML = `
+        <video src="${src}" muted></video>
+        <div class="asset-name">${item.name}</div>
+        <div class="del-asset" onclick="deleteAsset(${index})">✕</div>
+      `;
+    } else {
+      div.innerHTML = `
+        <img src="${src}" alt="${item.name}">
+        <div class="asset-name">${item.name}</div>
+        <div class="del-asset" onclick="deleteAsset(${index})">✕</div>
+      `;
+    }
+    grid.appendChild(div);
+  });
+}
+
+async function deleteAsset(index) {
+  const item = assets[currentAssetTab][index];
+  if (item && item.blobId) {
+    await deleteImageBlob(item.blobId);
+    const oldUrl = assetBlobRefs.get(item.blobId);
+    if (oldUrl) { URL.revokeObjectURL(oldUrl); assetBlobRefs.delete(item.blobId); }
+  }
+  assets[currentAssetTab].splice(index, 1);
+  saveAssets();
+  renderAssets();
+  showToast('🗑️ 已删除素材');
+}
+
+// 素材上传
+const assetFileInput = document.getElementById('assetFileInput');
+const assetUploadArea = document.getElementById('assetUploadArea');
+
+assetUploadArea.addEventListener('click', () => assetFileInput.click());
+assetFileInput.addEventListener('change', e => {
+  handleAssetUpload(Array.from(e.target.files));
+  e.target.value = '';
+});
+
+assetUploadArea.addEventListener('dragover', e => {
+  e.preventDefault();
+  assetUploadArea.classList.add('drag-over');
+});
+assetUploadArea.addEventListener('dragleave', () => assetUploadArea.classList.remove('drag-over'));
+assetUploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  assetUploadArea.classList.remove('drag-over');
+  handleAssetUpload(Array.from(e.dataTransfer.files));
+});
+
+async function handleAssetUpload(files) {
+  for (const file of files) {
+    let type = 'image';
+    if (file.type.startsWith('video')) type = 'video';
+    else if (file.type.startsWith('audio')) type = 'audio';
+    
+    const blobId = 'asset_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    await saveImageBlob(blobId, file);
+    const url = URL.createObjectURL(file);
+    assetBlobRefs.set(blobId, url);
+    
+    assets[type].push({
+      name: file.name,
+      blobId: blobId,
+      url: url,
+      size: file.size,
+      time: Date.now()
+    });
+    saveAssets();
+    if (type === currentAssetTab) renderAssets();
+    showToast(`✅ 已上传 ${file.name}`);
+  }
+}
+
+// ========== 风格引擎 ==========
+function selectStyle(el, styleId) {
+  document.querySelectorAll('.style-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentStyle = styleId;
+}
+
+function applyStyle() {
+  const project = projects.find(p => p.id === currentProjectId);
+  if (project) {
+    project.style = currentStyle;
+    saveAllProjects();
+  }
+  showToast(`✅ 已应用风格到当前剧本`);
+}
+
+// ========== 批量渲染 ==========
+function newRenderTask() {
+  const project = projects.find(p => p.id === currentProjectId);
+  const task = {
+    id: 'task_' + Date.now(),
+    name: `${project.name} - 第${renderTasks.length+1}批渲染`,
+    style: currentStyle,
+    status: 'wait',
+    progress: 0,
+    time: new Date().toLocaleString()
+  };
+  
+  renderTasks.unshift(task);
+  renderTaskList();
+  showToast('✅ 已创建渲染任务');
+  
+  setTimeout(() => startRenderTask(task.id), 1000);
+}
+
+function startRenderTask(id) {
+  const task = renderTasks.find(t => t.id === id);
+  if (!task) return;
+  
+  task.status = 'running';
+  renderTaskList();
+  
+  const timer = setInterval(() => {
+    task.progress += Math.random() * 8;
+    if (task.progress >= 100) {
+      task.progress = 100;
+      task.status = 'done';
+      clearInterval(timer);
+      showToast(`🎉 ${task.name} 渲染完成`);
+    }
+    renderTaskList();
+  }, 500);
+}
+
+function renderTaskList() {
+  const list = document.getElementById('renderTaskList');
+  if (renderTasks.length === 0) {
+    list.innerHTML = '<div class="empty-tip" style="padding: 60px 20px;">暂无渲染任务，点击右上角新建</div>';
+    return;
+  }
+  
+  list.innerHTML = '';
+  renderTasks.forEach(task => {
+    const statusClass = {
+      wait: 'status-wait',
+      running: 'status-running',
+      done: 'status-done',
+      fail: 'status-fail'
+    }[task.status];
+    
+    const statusText = {
+      wait: '排队中',
+      running: '渲染中',
+      done: '已完成',
+      fail: '失败'
+    }[task.status];
+    
+    const div = document.createElement('div');
+    div.className = 'render-task';
+    div.innerHTML = `
+      <div class="task-status ${statusClass}"></div>
+      <div class="task-info">
+        <div class="task-name">${task.name}</div>
+        <div class="task-meta">
+          <span>风格：${task.style}</span>
+          <span>创建时间：${task.time}</span>
+          <span>状态：${statusText}</span>
+        </div>
+      </div>
+      <div class="task-progress">
+        <div class="task-progress-bar" style="width:${task.progress}%"></div>
+      </div>
+      <div class="task-actions">
+        ${task.status === 'done' ? '<button>下载</button>' : ''}
+        <button onclick="deleteTask('${task.id}')">删除</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function deleteTask(id) {
+  renderTasks = renderTasks.filter(t => t.id !== id);
+  renderTaskList();
+  showToast('🗑️ 已删除任务');
+}
+
+// ========== 剧本内图片上传（IndexedDB + ObjectURL） ==========
+// 世界观封面上传
+async function uploadWorldviewImg() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,video/*';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // 先显示（ObjectURL 即时渲染，无编码延迟）
+    const url = URL.createObjectURL(file);
+    const box = document.getElementById('worldviewCover');
+    if (file.type.startsWith('video')) {
+      box.innerHTML = `<video src="${url}" muted controls></video>`;
+    } else {
+      box.innerHTML = `<img src="${url}" alt="封面">`;
+    }
+    
+    // 存入 IndexedDB
+    const project = projects.find(p => p.id === currentProjectId);
+    if (project) {
+      if (!project.images) project.images = {};
+      const meta = await storeProjectImage(currentProjectId, 'worldviewCover', file);
+      meta.url = url; // 当前会话的 ObjectURL
+      project.images.worldviewCover = meta;
+      saveAllProjects();
+    }
+    showToast('✅ 已上传封面（IndexedDB持久化）');
+  };
+  input.click();
+}
+
+// 角色/妖物/道具图片上传
+async function uploadCharImg(el, key) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const url = URL.createObjectURL(file);
+    el.innerHTML = `<img src="${url}" alt="立绘">`;
+    
+    const project = projects.find(p => p.id === currentProjectId);
+    if (project) {
+      if (!project.images) project.images = {};
+      const meta = await storeProjectImage(currentProjectId, key, file);
+      meta.url = url;
+      project.images[key] = meta;
+      saveAllProjects();
+    }
+    showToast('✅ 已上传图片（IndexedDB持久化）');
+  };
+  input.click();
+}
+
+// ========== Toast 提示 ==========
+let toastShowing = false;
+function showToast(text) {
+  if (toastShowing) return;
+  toastShowing = true;
+  const toast = document.createElement('div');
+  toast.className = 'coming-soon-toast';
+  toast.textContent = text;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => { toast.remove(); toastShowing = false; }, 400);
+  }, 2000);
+}
+
+function comingSoon() {
+  showToast('✨ 敬请期待');
+}
+</script>
+</body>
+</html>
